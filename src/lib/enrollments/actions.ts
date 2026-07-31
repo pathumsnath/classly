@@ -3,20 +3,40 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
+import { findOrCreateStudent } from "@/lib/people/actions";
 
 export interface ActionResult {
   error?: string;
   success?: boolean;
 }
 
+// Accepts either an existing studentId (the dropdown path) or
+// name/phone/parentPhone (the inline "+ New student" path) — mirrors how
+// createClass branches on subjectId vs newSubjectName.
 export async function enrollStudent(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const session = await requireSession();
 
   const classId = String(formData.get("classId") || "");
-  const studentId = String(formData.get("studentId") || "");
-  if (!classId || !studentId) return { error: "Select a student." };
+  if (!classId) return { error: "Missing class." };
 
   const admin = createAdminClient();
+
+  let studentId = String(formData.get("studentId") || "");
+  if (!studentId) {
+    const name = String(formData.get("name") || "").trim();
+    const phone = String(formData.get("phone") || "").trim();
+    const parentPhone = String(formData.get("parentPhone") || "").trim();
+
+    if (!name || !phone) return { error: "Select a student, or enter a name and phone." };
+
+    const resolved = await findOrCreateStudent(admin, session.instituteId, {
+      name,
+      phone,
+      parentPhone: parentPhone || null,
+    });
+    if ("error" in resolved) return { error: resolved.error };
+    studentId = resolved.id;
+  }
 
   // enrollments has a unique(student_id, class_id) constraint — a student
   // unenrolled earlier (FR-4.3, status set to inactive, never deleted)

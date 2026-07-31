@@ -33,6 +33,41 @@ async function findOrCreatePerson(
   return { id: created.id };
 }
 
+// Used by the class enrollment form's inline "+ New student" path
+// (src/app/classes/[id]/enroll-form.tsx / enrollStudent action) — unlike
+// addStudent, an already-existing student profile here is expected, not
+// an error: we're enrolling them into a *new* class, not re-adding them.
+export async function findOrCreateStudent(
+  admin: AdminClient,
+  instituteId: string,
+  { name, phone, parentPhone }: { name: string; phone: string; parentPhone: string | null },
+): Promise<{ id: string } | { error: string }> {
+  const person = await findOrCreatePerson(admin, { name, phone, email: null, parentPhone });
+  if ("error" in person) return person;
+
+  const { data: existingLink } = await admin
+    .from("institute_students")
+    .select("id, status")
+    .eq("institute_id", instituteId)
+    .eq("student_id", person.id)
+    .maybeSingle();
+
+  if (existingLink) {
+    if (existingLink.status === "inactive") {
+      const { error } = await admin.from("institute_students").update({ status: "active" }).eq("id", existingLink.id);
+      if (error) return { error: `Could not reactivate student: ${error.message}` };
+    }
+    return { id: person.id };
+  }
+
+  const { error } = await admin
+    .from("institute_students")
+    .insert({ institute_id: instituteId, student_id: person.id, status: "active" });
+
+  if (error) return { error: `Could not add student: ${error.message}` };
+  return { id: person.id };
+}
+
 export async function addTutor(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const session = await requireSession();
 
