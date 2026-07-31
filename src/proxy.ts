@@ -38,7 +38,9 @@ export async function proxy(request: NextRequest) {
 
   const pathname = request.nextUrl.pathname;
   const isPublic =
-    PUBLIC_PATHS.some((p) => pathname.startsWith(p)) || pathname.startsWith("/api/auth/sms-hook");
+    PUBLIC_PATHS.some((p) => pathname.startsWith(p)) ||
+    pathname.startsWith("/api/auth/sms-hook") ||
+    pathname.startsWith("/api/cron/");
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

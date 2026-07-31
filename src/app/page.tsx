@@ -34,6 +34,9 @@ export default async function DashboardPage() {
         <Link href="/classes" className="text-sm font-medium text-indigo-600">
           Classes
         </Link>
+        <Link href="/fees" className="text-sm font-medium text-indigo-600">
+          Fees
+        </Link>
         {session.role === "owner" && (
           <Link href="/staff/invite" className="text-sm font-medium text-indigo-600">
             Add admin staff

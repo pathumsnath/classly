@@ -19,6 +19,16 @@ export interface StudentRow {
   status: TutorStatus;
 }
 
+export async function getPerson(userId: string): Promise<{ id: string; name: string; phone: string } | null> {
+  await requireSession();
+  const supabase = await createClient();
+
+  // RLS (users_select) already scopes this to people visible within the
+  // caller's institute — no separate institute_id check needed here.
+  const { data } = await supabase.from("users").select("id, name, phone").eq("id", userId).maybeSingle();
+  return data;
+}
+
 export async function listTutors(): Promise<TutorRow[]> {
   const session = await requireSession();
   const supabase = await createClient();
