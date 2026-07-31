@@ -1,14 +1,17 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
-import type { FeeType, TutorPaymentModel } from "@/lib/supabase/types";
+import type { FeeType, TutorPaymentModel, GradeLevel, ClassMedium } from "@/lib/supabase/types";
 
 export interface ClassRow {
   id: string;
   subject: string;
+  grade: GradeLevel | null;
+  medium: ClassMedium | null;
   tutorName: string;
   scheduleDays: string[];
-  scheduleTime: string | null;
+  scheduleStartTime: string | null;
+  scheduleEndTime: string | null;
   feeAmount: number;
   feeType: FeeType;
 }
@@ -40,7 +43,7 @@ export async function listClasses(): Promise<ClassRow[]> {
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, subject, tutor_id, schedule_days, schedule_time, fee_amount, fee_type")
+    .select("id, subject, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type")
     .eq("institute_id", session.instituteId)
     .order("created_at", { ascending: true });
 
@@ -54,9 +57,12 @@ export async function listClasses(): Promise<ClassRow[]> {
   return classes.map((c) => ({
     id: c.id,
     subject: c.subject,
+    grade: c.grade,
+    medium: c.medium,
     tutorName: names.get(c.tutor_id) ?? "Unknown",
     scheduleDays: c.schedule_days,
-    scheduleTime: c.schedule_time,
+    scheduleStartTime: c.schedule_start_time,
+    scheduleEndTime: c.schedule_end_time,
     feeAmount: c.fee_amount,
     feeType: c.fee_type,
   }));
@@ -80,10 +86,13 @@ export async function getClass(classId: string): Promise<ClassDetail | null> {
   return {
     id: cls.id,
     subject: cls.subject,
+    grade: cls.grade,
+    medium: cls.medium,
     tutorId: cls.tutor_id,
     tutorName: names.get(cls.tutor_id) ?? "Unknown",
     scheduleDays: cls.schedule_days,
-    scheduleTime: cls.schedule_time,
+    scheduleStartTime: cls.schedule_start_time,
+    scheduleEndTime: cls.schedule_end_time,
     feeAmount: cls.fee_amount,
     feeType: cls.fee_type,
     room: cls.room,

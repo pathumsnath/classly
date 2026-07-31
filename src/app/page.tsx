@@ -117,7 +117,12 @@ export default async function DashboardPage() {
                         <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
                         <div>
                           <p className="font-medium text-gray-900">{cls.subject}</p>
-                          {cls.scheduleTime && <p className="text-xs text-gray-500">{cls.scheduleTime}</p>}
+                          {cls.scheduleStartTime && (
+                            <p className="text-xs text-gray-500">
+                              {cls.scheduleStartTime}
+                              {cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${style.pill}`}>

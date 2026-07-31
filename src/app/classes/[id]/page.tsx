@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CalendarDays, DoorOpen, Wallet, Users, ClipboardCheck } from "lucide-react";
+import { CalendarDays, DoorOpen, Wallet, Users, ClipboardCheck, GraduationCap } from "lucide-react";
 import { getClass, listEnrolledStudents } from "@/lib/classes/queries";
 import { listStudents } from "@/lib/people/queries";
+import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { unenrollStudent } from "@/lib/enrollments/actions";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState, Avatar } from "@/components/card";
@@ -23,9 +24,15 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
     <PageShell title={cls.subject} backHref="/classes">
       <Card className="flex flex-col gap-3 p-5 text-sm text-gray-700">
         <p className="flex items-center gap-2">
+          <GraduationCap className="h-4 w-4 shrink-0 text-gray-400" />
+          {formatGrade(cls.grade)} · {formatMedium(cls.medium)}
+        </p>
+        <p className="flex items-center gap-2">
           <CalendarDays className="h-4 w-4 shrink-0 text-gray-400" />
           {cls.tutorName} · {cls.scheduleDays.join(", ") || "no schedule"}
-          {cls.scheduleTime ? ` at ${cls.scheduleTime}` : ""}
+          {cls.scheduleStartTime
+            ? ` at ${cls.scheduleStartTime}${cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}`
+            : ""}
         </p>
         {cls.room && (
           <p className="flex items-center gap-2">

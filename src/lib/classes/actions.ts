@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
-import type { FeeType, TutorPaymentModel } from "@/lib/supabase/types";
+import { GRADE_OPTIONS, MEDIUM_OPTIONS } from "@/lib/classes/labels";
+import type { FeeType, TutorPaymentModel, GradeLevel, ClassMedium } from "@/lib/supabase/types";
 
 export interface ActionResult {
   error?: string;
@@ -13,12 +14,17 @@ export interface ActionResult {
 
 const FEE_TYPES: FeeType[] = ["monthly_flat", "per_session"];
 const PAYMENT_MODELS: TutorPaymentModel[] = ["revenue_share", "fixed", "per_student", "per_session"];
+const GRADES = GRADE_OPTIONS.map((g) => g.value);
+const MEDIUMS = MEDIUM_OPTIONS.map((m) => m.value);
 
 interface ParsedClassInput {
   subject: string;
+  grade: GradeLevel;
+  medium: ClassMedium;
   tutorId: string;
   scheduleDays: string[];
-  scheduleTime: string | null;
+  scheduleStartTime: string | null;
+  scheduleEndTime: string | null;
   room: string | null;
   maxStudents: number | null;
   feeAmount: number;
@@ -29,9 +35,12 @@ interface ParsedClassInput {
 
 function parseClassInput(formData: FormData): ParsedClassInput | { error: string } {
   const subject = String(formData.get("subject") || "").trim();
+  const grade = String(formData.get("grade") || "") as GradeLevel;
+  const medium = String(formData.get("medium") || "") as ClassMedium;
   const tutorId = String(formData.get("tutorId") || "");
   const scheduleDays = formData.getAll("scheduleDays").map(String);
-  const scheduleTime = String(formData.get("scheduleTime") || "") || null;
+  const scheduleStartTime = String(formData.get("scheduleStartTime") || "") || null;
+  const scheduleEndTime = String(formData.get("scheduleEndTime") || "") || null;
   const room = String(formData.get("room") || "").trim() || null;
   const maxStudentsRaw = String(formData.get("maxStudents") || "").trim();
   const feeAmountRaw = String(formData.get("feeAmount") || "").trim();
@@ -40,6 +49,11 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
   const tutorPaymentValueRaw = String(formData.get("tutorPaymentValue") || "").trim();
 
   if (!subject || !tutorId) return { error: "Subject and tutor are required." };
+  if (!GRADES.includes(grade)) return { error: "Select a grade." };
+  if (!MEDIUMS.includes(medium)) return { error: "Select a medium." };
+  if (scheduleDays.length === 0) return { error: "Select at least one day." };
+  if (!scheduleStartTime || !scheduleEndTime) return { error: "Start and end time are required." };
+  if (scheduleEndTime <= scheduleStartTime) return { error: "End time must be after start time." };
 
   const feeAmount = Number(feeAmountRaw);
   if (!feeAmountRaw || Number.isNaN(feeAmount) || feeAmount < 0) {
@@ -60,9 +74,12 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
 
   return {
     subject,
+    grade,
+    medium,
     tutorId,
     scheduleDays,
-    scheduleTime,
+    scheduleStartTime,
+    scheduleEndTime,
     room,
     maxStudents,
     feeAmount,
@@ -85,8 +102,11 @@ export async function createClass(_prevState: ActionResult, formData: FormData):
       institute_id: session.instituteId,
       tutor_id: parsed.tutorId,
       subject: parsed.subject,
+      grade: parsed.grade,
+      medium: parsed.medium,
       schedule_days: parsed.scheduleDays,
-      schedule_time: parsed.scheduleTime,
+      schedule_start_time: parsed.scheduleStartTime,
+      schedule_end_time: parsed.scheduleEndTime,
       room: parsed.room,
       max_students: parsed.maxStudents,
       fee_amount: parsed.feeAmount,
@@ -117,8 +137,11 @@ export async function updateClass(_prevState: ActionResult, formData: FormData):
     .update({
       tutor_id: parsed.tutorId,
       subject: parsed.subject,
+      grade: parsed.grade,
+      medium: parsed.medium,
       schedule_days: parsed.scheduleDays,
-      schedule_time: parsed.scheduleTime,
+      schedule_start_time: parsed.scheduleStartTime,
+      schedule_end_time: parsed.scheduleEndTime,
       room: parsed.room,
       max_students: parsed.maxStudents,
       fee_amount: parsed.feeAmount,

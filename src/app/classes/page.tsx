@@ -2,6 +2,7 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { listClasses } from "@/lib/classes/queries";
 import { listTutors } from "@/lib/people/queries";
+import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 import { CreateClassForm } from "./create-class-form";
@@ -22,10 +23,14 @@ export default async function ClassesPage() {
               href={`/classes/${cls.id}`}
               className="block p-4 transition hover:bg-gray-50"
             >
-              <p className="font-medium text-gray-900">{cls.subject}</p>
+              <p className="font-medium text-gray-900">
+                {cls.subject} · {formatGrade(cls.grade)} · {formatMedium(cls.medium)}
+              </p>
               <p className="text-sm text-gray-500">
                 {cls.tutorName} · {cls.scheduleDays.join(", ") || "no schedule set"}
-                {cls.scheduleTime ? ` · ${cls.scheduleTime}` : ""}
+                {cls.scheduleStartTime
+                  ? ` · ${cls.scheduleStartTime}${cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}`
+                  : ""}
               </p>
             </Link>
           ))}

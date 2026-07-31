@@ -11,7 +11,8 @@ const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export interface TodayClassRow {
   id: string;
   subject: string;
-  scheduleTime: string | null;
+  scheduleStartTime: string | null;
+  scheduleEndTime: string | null;
   bucket: "now" | "upcoming" | "done";
 }
 
@@ -28,7 +29,7 @@ export async function getTodaysClasses(): Promise<TodayClassRow[]> {
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, subject, schedule_time, schedule_days")
+    .select("id, subject, schedule_start_time, schedule_end_time, schedule_days")
     .eq("institute_id", session.instituteId);
 
   const todays = (classes ?? []).filter((c) => c.schedule_days.includes(weekday));
@@ -53,13 +54,19 @@ export async function getTodaysClasses(): Promise<TodayClassRow[]> {
       let bucket: TodayClassRow["bucket"] = "upcoming";
       if (doneSet.has(c.id)) {
         bucket = "done";
-      } else if (c.schedule_time) {
-        const [h, m] = c.schedule_time.split(":").map(Number);
+      } else if (c.schedule_start_time) {
+        const [h, m] = c.schedule_start_time.split(":").map(Number);
         bucket = nowMinutes >= h * 60 + m ? "now" : "upcoming";
       }
-      return { id: c.id, subject: c.subject, scheduleTime: c.schedule_time, bucket };
+      return {
+        id: c.id,
+        subject: c.subject,
+        scheduleStartTime: c.schedule_start_time,
+        scheduleEndTime: c.schedule_end_time,
+        bucket,
+      };
     })
-    .sort((a, b) => (a.scheduleTime ?? "").localeCompare(b.scheduleTime ?? ""));
+    .sort((a, b) => (a.scheduleStartTime ?? "").localeCompare(b.scheduleStartTime ?? ""));
 }
 
 export interface AttendanceStudentRow {

@@ -13,6 +13,23 @@ export type PaymentStatus = "pending" | "partial" | "paid" | "overdue" | "waived
 export type PaymentMethod = "cash" | "bank_transfer" | "other";
 export type SalaryStatus = "pending" | "paid";
 export type NotificationType = "invite" | "receipt" | "attendance_alert";
+export type GradeLevel =
+  | "grade_1"
+  | "grade_2"
+  | "grade_3"
+  | "grade_4"
+  | "grade_5"
+  | "grade_6"
+  | "grade_7"
+  | "grade_8"
+  | "grade_9"
+  | "grade_10"
+  | "grade_11"
+  | "grade_12"
+  | "grade_13"
+  | "ol"
+  | "al";
+export type ClassMedium = "sinhala" | "english" | "tamil";
 
 export interface Database {
   public: {
@@ -145,8 +162,11 @@ export interface Database {
           institute_id: string;
           tutor_id: string;
           subject: string;
+          grade: GradeLevel | null;
+          medium: ClassMedium | null;
           schedule_days: string[];
-          schedule_time: string | null;
+          schedule_start_time: string | null;
+          schedule_end_time: string | null;
           room: string | null;
           max_students: number | null;
           fee_amount: number;
@@ -160,8 +180,11 @@ export interface Database {
           institute_id: string;
           tutor_id: string;
           subject: string;
+          grade?: GradeLevel | null;
+          medium?: ClassMedium | null;
           schedule_days?: string[];
-          schedule_time?: string | null;
+          schedule_start_time?: string | null;
+          schedule_end_time?: string | null;
           room?: string | null;
           max_students?: number | null;
           fee_amount: number;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Check } from "lucide-react";
 import { addTutor, addStudent } from "@/lib/people/actions";
 import { createClass } from "@/lib/classes/actions";
+import { GRADE_OPTIONS, MEDIUM_OPTIONS } from "@/lib/classes/labels";
 import { completeOnboarding } from "@/lib/onboarding/actions";
 import { Field, FormError, Select, SubmitButton } from "@/components/form";
 import { Card } from "@/components/card";
@@ -120,6 +121,28 @@ function ClassStep({
         <h2 className="text-lg font-semibold text-gray-900">Create your first class</h2>
         <Field label="Subject" name="subject" required />
 
+        <Select label="Grade" name="grade" required defaultValue="">
+          <option value="" disabled>
+            Select a grade
+          </option>
+          {GRADE_OPTIONS.map((g) => (
+            <option key={g.value} value={g.value}>
+              {g.label}
+            </option>
+          ))}
+        </Select>
+
+        <Select label="Medium" name="medium" required defaultValue="">
+          <option value="" disabled>
+            Select a medium
+          </option>
+          {MEDIUM_OPTIONS.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
+            </option>
+          ))}
+        </Select>
+
         <Select label="Tutor" name="tutorId" required defaultValue={tutors[0].id}>
           {tutors.map((tutor) => (
             <option key={tutor.id} value={tutor.id}>
@@ -142,7 +165,10 @@ function ClassStep({
           </div>
         </fieldset>
 
-        <Field label="Time" name="scheduleTime" type="time" />
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Start time" name="scheduleStartTime" type="time" required />
+          <Field label="End time" name="scheduleEndTime" type="time" required />
+        </div>
         <Field label="Fee amount (LKR)" name="feeAmount" type="number" min={0} step="0.01" required />
 
         <Select label="Fee type" name="feeType" required defaultValue="monthly_flat">

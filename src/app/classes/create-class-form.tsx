@@ -3,6 +3,7 @@
 import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClass } from "@/lib/classes/actions";
+import { GRADE_OPTIONS, MEDIUM_OPTIONS } from "@/lib/classes/labels";
 import { Field, FormError, Select, SubmitButton } from "@/components/form";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -35,6 +36,28 @@ export function CreateClassForm({
       <h2 className="font-semibold text-gray-900">Create a class</h2>
       <Field label="Subject" name="subject" required />
 
+      <Select label="Grade" name="grade" required defaultValue="">
+        <option value="" disabled>
+          Select a grade
+        </option>
+        {GRADE_OPTIONS.map((g) => (
+          <option key={g.value} value={g.value}>
+            {g.label}
+          </option>
+        ))}
+      </Select>
+
+      <Select label="Medium" name="medium" required defaultValue="">
+        <option value="" disabled>
+          Select a medium
+        </option>
+        {MEDIUM_OPTIONS.map((m) => (
+          <option key={m.value} value={m.value}>
+            {m.label}
+          </option>
+        ))}
+      </Select>
+
       <Select label="Tutor" name="tutorId" required defaultValue="">
         <option value="" disabled>
           Select a tutor
@@ -60,7 +83,10 @@ export function CreateClassForm({
         </div>
       </fieldset>
 
-      <Field label="Time" name="scheduleTime" type="time" />
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Start time" name="scheduleStartTime" type="time" required />
+        <Field label="End time" name="scheduleEndTime" type="time" required />
+      </div>
       <Field label="Room (optional)" name="room" />
       <Field label="Max students (optional)" name="maxStudents" type="number" min={1} />
       <Field label="Fee amount (LKR)" name="feeAmount" type="number" min={0} step="0.01" required />
