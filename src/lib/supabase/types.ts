@@ -161,7 +161,7 @@ export interface Database {
           id: string;
           institute_id: string;
           tutor_id: string;
-          subject: string;
+          subject_id: string;
           grade: GradeLevel | null;
           medium: ClassMedium | null;
           schedule_days: string[];
@@ -179,7 +179,7 @@ export interface Database {
           id?: string;
           institute_id: string;
           tutor_id: string;
-          subject: string;
+          subject_id: string;
           grade?: GradeLevel | null;
           medium?: ClassMedium | null;
           schedule_days?: string[];
@@ -194,6 +194,24 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["classes"]["Insert"]>;
+        Relationships: [];
+      };
+      subjects: {
+        Row: {
+          id: string;
+          institute_id: string;
+          name: string;
+          status: TutorStatus;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institute_id: string;
+          name: string;
+          status?: TutorStatus;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["subjects"]["Insert"]>;
         Relationships: [];
       };
       enrollments: {

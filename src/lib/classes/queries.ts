@@ -1,6 +1,7 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
+import { subjectNamesById } from "@/lib/subjects/queries";
 import type { FeeType, TutorPaymentModel, GradeLevel, ClassMedium } from "@/lib/supabase/types";
 
 export interface ClassRow {
@@ -18,6 +19,7 @@ export interface ClassRow {
 
 export interface ClassDetail extends ClassRow {
   tutorId: string;
+  subjectId: string;
   room: string | null;
   maxStudents: number | null;
   tutorPaymentModel: TutorPaymentModel;
@@ -43,23 +45,31 @@ export async function listClasses(): Promise<ClassRow[]> {
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, subject, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type")
+    .select(
+      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type",
+    )
     .eq("institute_id", session.instituteId)
     .order("created_at", { ascending: true });
 
   if (!classes || classes.length === 0) return [];
 
-  const names = await tutorNamesById(
-    supabase,
-    classes.map((c) => c.tutor_id),
-  );
+  const [tutorNames, subjectNames] = await Promise.all([
+    tutorNamesById(
+      supabase,
+      classes.map((c) => c.tutor_id),
+    ),
+    subjectNamesById(
+      supabase,
+      classes.map((c) => c.subject_id),
+    ),
+  ]);
 
   return classes.map((c) => ({
     id: c.id,
-    subject: c.subject,
+    subject: subjectNames.get(c.subject_id) ?? "Unknown",
     grade: c.grade,
     medium: c.medium,
-    tutorName: names.get(c.tutor_id) ?? "Unknown",
+    tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
     scheduleDays: c.schedule_days,
     scheduleStartTime: c.schedule_start_time,
     scheduleEndTime: c.schedule_end_time,
@@ -81,15 +91,19 @@ export async function getClass(classId: string): Promise<ClassDetail | null> {
 
   if (!cls) return null;
 
-  const names = await tutorNamesById(supabase, [cls.tutor_id]);
+  const [tutorNames, subjectNames] = await Promise.all([
+    tutorNamesById(supabase, [cls.tutor_id]),
+    subjectNamesById(supabase, [cls.subject_id]),
+  ]);
 
   return {
     id: cls.id,
-    subject: cls.subject,
+    subject: subjectNames.get(cls.subject_id) ?? "Unknown",
+    subjectId: cls.subject_id,
     grade: cls.grade,
     medium: cls.medium,
     tutorId: cls.tutor_id,
-    tutorName: names.get(cls.tutor_id) ?? "Unknown",
+    tutorName: tutorNames.get(cls.tutor_id) ?? "Unknown",
     scheduleDays: cls.schedule_days,
     scheduleStartTime: cls.schedule_start_time,
     scheduleEndTime: cls.schedule_end_time,

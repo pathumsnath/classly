@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireOwner } from "@/lib/auth/require-owner";
 import { calculateClassSalary, type ClassSalaryBreakdown } from "./calculate";
+import { subjectNamesById } from "@/lib/subjects/queries";
 import type { SalaryStatus } from "@/lib/supabase/types";
 
 export interface TutorSalary {
@@ -34,7 +35,7 @@ export async function getTutorSalaries(month: string): Promise<TutorSalary[]> {
     supabase.from("users").select("id, name").in("id", tutorIds),
     supabase
       .from("classes")
-      .select("id, subject, tutor_id, tutor_payment_model, tutor_payment_value")
+      .select("id, subject_id, tutor_id, tutor_payment_model, tutor_payment_value")
       .eq("institute_id", session.instituteId)
       .in("tutor_id", tutorIds),
     supabase
@@ -44,13 +45,22 @@ export async function getTutorSalaries(month: string): Promise<TutorSalary[]> {
       .eq("month", month),
   ]);
 
+  const subjectNames = await subjectNamesById(
+    supabase,
+    (classes ?? []).map((c) => c.subject_id),
+  );
+
   const nameById = new Map((tutors ?? []).map((t) => [t.id, t.name]));
   const salaryByTutor = new Map((salaryPayments ?? []).map((s) => [s.tutor_id, s]));
 
   const results: TutorSalary[] = [];
   for (const tutorId of tutorIds) {
     const tutorClasses = (classes ?? []).filter((c) => c.tutor_id === tutorId);
-    const breakdown = await Promise.all(tutorClasses.map((c) => calculateClassSalary(supabase, c, month)));
+    const breakdown = await Promise.all(
+      tutorClasses.map((c) =>
+        calculateClassSalary(supabase, { ...c, subject: subjectNames.get(c.subject_id) ?? "Unknown" }, month),
+      ),
+    );
     const total = breakdown.reduce((sum, b) => sum + b.amount, 0);
     const salary = salaryByTutor.get(tutorId);
 

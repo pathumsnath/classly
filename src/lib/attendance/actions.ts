@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
 import { sendSms } from "@/lib/sms";
+import { subjectNamesById } from "@/lib/subjects/queries";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 
 export interface ActionResult {
@@ -106,13 +107,15 @@ export async function sendAbsenceAlerts(classId: string, date: string): Promise<
 
   const [{ data: students }, { data: cls }] = await Promise.all([
     admin.from("users").select("id, name, phone, parent_phone").in("id", studentIds),
-    admin.from("classes").select("subject").eq("id", classId).maybeSingle(),
+    admin.from("classes").select("subject_id").eq("id", classId).maybeSingle(),
   ]);
+
+  const subjectName = cls ? (await subjectNamesById(admin, [cls.subject_id])).get(cls.subject_id) : undefined;
 
   let sent = 0;
   for (const student of students ?? []) {
     const to = student.parent_phone || student.phone;
-    const message = `${student.name} was marked absent in ${cls?.subject ?? "class"} on ${date}. - ${session.instituteName}`;
+    const message = `${student.name} was marked absent in ${subjectName ?? "class"} on ${date}. - ${session.instituteName}`;
 
     try {
       await sendSms({ to, message });

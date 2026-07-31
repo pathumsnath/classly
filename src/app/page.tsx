@@ -4,6 +4,7 @@ import {
   GraduationCap,
   Users,
   BookOpen,
+  Library,
   Receipt,
   Wallet,
   TrendingUp,
@@ -25,6 +26,7 @@ const BUCKET_STYLES: Record<string, { dot: string; pill: string }> = {
 const NAV_ITEMS = [
   { href: "/people/tutors", label: "Tutors", Icon: GraduationCap },
   { href: "/people/students", label: "Students", Icon: Users },
+  { href: "/subjects", label: "Subjects", Icon: Library },
   { href: "/classes", label: "Classes", Icon: BookOpen },
   { href: "/fees", label: "Fees", Icon: Receipt },
 ] as const;

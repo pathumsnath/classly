@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
 import { isOverdue as computeIsOverdue } from "@/lib/fees/status";
 import { currentMonthInColombo } from "@/lib/time";
+import { subjectNamesById } from "@/lib/subjects/queries";
 import type { PaymentStatus } from "@/lib/supabase/types";
 
 export interface FeeRow {
@@ -43,11 +44,18 @@ async function toFeeRows(
 
   const [{ data: students }, { data: classes }] = await Promise.all([
     supabase.from("users").select("id, name, phone").in("id", studentIds),
-    supabase.from("classes").select("id, subject").in("id", classIds),
+    supabase.from("classes").select("id, subject_id").in("id", classIds),
   ]);
 
+  const subjectNames = await subjectNamesById(
+    supabase,
+    (classes ?? []).map((c) => c.subject_id),
+  );
+
   const studentById = new Map((students ?? []).map((s) => [s.id, s]));
-  const subjectByClassId = new Map((classes ?? []).map((c) => [c.id, c.subject]));
+  const subjectByClassId = new Map(
+    (classes ?? []).map((c) => [c.id, subjectNames.get(c.subject_id) ?? "Unknown"]),
+  );
 
   const currentMonth = currentMonthInColombo();
 

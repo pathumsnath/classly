@@ -2,14 +2,16 @@ import Link from "next/link";
 import { BookOpen } from "lucide-react";
 import { listClasses } from "@/lib/classes/queries";
 import { listTutors } from "@/lib/people/queries";
+import { listSubjects } from "@/lib/subjects/queries";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 import { CreateClassForm } from "./create-class-form";
 
 export default async function ClassesPage() {
-  const [classes, tutors] = await Promise.all([listClasses(), listTutors()]);
+  const [classes, tutors, subjects] = await Promise.all([listClasses(), listTutors(), listSubjects()]);
   const activeTutors = tutors.filter((t) => t.status === "active");
+  const activeSubjects = subjects.filter((s) => s.status === "active");
 
   return (
     <PageShell title="Classes">
@@ -39,8 +41,10 @@ export default async function ClassesPage() {
 
       {activeTutors.length === 0 ? (
         <EmptyState message="Add a tutor first — a class needs one assigned." />
+      ) : activeSubjects.length === 0 ? (
+        <EmptyState message="Add a subject first — a class needs one assigned." />
       ) : (
-        <CreateClassForm tutors={activeTutors} />
+        <CreateClassForm tutors={activeTutors} subjects={activeSubjects} />
       )}
     </PageShell>
   );

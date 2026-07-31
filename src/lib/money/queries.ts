@@ -4,6 +4,7 @@ import { requireOwner } from "@/lib/auth/require-owner";
 import { isOverdue } from "@/lib/fees/status";
 import { currentMonthInColombo } from "@/lib/time";
 import { getTutorSalaries } from "@/lib/salaries/queries";
+import { subjectNamesById } from "@/lib/subjects/queries";
 
 export interface ClassMoneySummary {
   classId: string;
@@ -64,9 +65,13 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
 
   const classIds = [...byClass.keys()];
   const { data: classes } = classIds.length
-    ? await supabase.from("classes").select("id, subject").in("id", classIds)
+    ? await supabase.from("classes").select("id, subject_id").in("id", classIds)
     : { data: [] };
-  const subjectById = new Map((classes ?? []).map((c) => [c.id, c.subject]));
+  const subjectNames = await subjectNamesById(
+    supabase,
+    (classes ?? []).map((c) => c.subject_id),
+  );
+  const subjectById = new Map((classes ?? []).map((c) => [c.id, subjectNames.get(c.subject_id) ?? "Unknown"]));
 
   const perClass: ClassMoneySummary[] = classIds.map((classId) => {
     const entry = byClass.get(classId)!;

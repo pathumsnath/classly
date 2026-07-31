@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
 import { colomboNow, todayInColombo } from "@/lib/time";
+import { subjectNamesById } from "@/lib/subjects/queries";
 import type { AttendanceStatus, PaymentStatus } from "@/lib/supabase/types";
 
 export { todayInColombo };
@@ -29,7 +30,7 @@ export async function getTodaysClasses(): Promise<TodayClassRow[]> {
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, subject, schedule_start_time, schedule_end_time, schedule_days")
+    .select("id, subject_id, schedule_start_time, schedule_end_time, schedule_days")
     .eq("institute_id", session.instituteId);
 
   const todays = (classes ?? []).filter((c) => c.schedule_days.includes(weekday));
@@ -37,9 +38,13 @@ export async function getTodaysClasses(): Promise<TodayClassRow[]> {
 
   const classIds = todays.map((c) => c.id);
 
-  const [{ data: cancellations }, { data: attendanceRows }] = await Promise.all([
+  const [{ data: cancellations }, { data: attendanceRows }, subjectNames] = await Promise.all([
     supabase.from("class_cancellations").select("class_id").eq("date", date).in("class_id", classIds),
     supabase.from("attendance").select("class_id").eq("date", date).in("class_id", classIds),
+    subjectNamesById(
+      supabase,
+      todays.map((c) => c.subject_id),
+    ),
   ]);
 
   const doneSet = new Set([
@@ -60,7 +65,7 @@ export async function getTodaysClasses(): Promise<TodayClassRow[]> {
       }
       return {
         id: c.id,
-        subject: c.subject,
+        subject: subjectNames.get(c.subject_id) ?? "Unknown",
         scheduleStartTime: c.schedule_start_time,
         scheduleEndTime: c.schedule_end_time,
         bucket,
@@ -93,12 +98,15 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
 
   const { data: cls } = await supabase
     .from("classes")
-    .select("id, subject")
+    .select("id, subject_id")
     .eq("id", classId)
     .eq("institute_id", session.instituteId)
     .maybeSingle();
 
   if (!cls) return null;
+
+  const subjectNames = await subjectNamesById(supabase, [cls.subject_id]);
+  const subject = subjectNames.get(cls.subject_id) ?? "Unknown";
 
   const { data: cancellation } = await supabase
     .from("class_cancellations")
@@ -114,7 +122,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     .eq("status", "active");
 
   if (!enrollments || enrollments.length === 0) {
-    return { classId, subject: cls.subject, date, isCancelled: !!cancellation, students: [] };
+    return { classId, subject, date, isCancelled: !!cancellation, students: [] };
   }
 
   const studentIds = enrollments.map((e) => e.student_id);
@@ -149,5 +157,5 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     };
   });
 
-  return { classId, subject: cls.subject, date, isCancelled: !!cancellation, students: rows };
+  return { classId, subject, date, isCancelled: !!cancellation, students: rows };
 }

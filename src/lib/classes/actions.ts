@@ -12,13 +12,49 @@ export interface ActionResult {
   classId?: string;
 }
 
+type AdminClient = ReturnType<typeof createAdminClient>;
+
 const FEE_TYPES: FeeType[] = ["monthly_flat", "per_session"];
 const PAYMENT_MODELS: TutorPaymentModel[] = ["revenue_share", "fixed", "per_student", "per_session"];
 const GRADES = GRADE_OPTIONS.map((g) => g.value);
 const MEDIUMS = MEDIUM_OPTIONS.map((m) => m.value);
 
+// The main /classes form sends an existing subjectId (picked from a
+// dropdown). The onboarding wizard's class step sends newSubjectName
+// instead — there's no dedicated "add subjects" step before it, so a
+// fresh institute would otherwise always hit an empty subjects list here.
+// Both paths funnel through this one action.
+async function resolveSubjectId(
+  admin: AdminClient,
+  instituteId: string,
+  formData: FormData,
+): Promise<string | { error: string }> {
+  const subjectId = String(formData.get("subjectId") || "");
+  if (subjectId) return subjectId;
+
+  const newSubjectName = String(formData.get("newSubjectName") || "").trim();
+  if (!newSubjectName) return { error: "Select or enter a subject." };
+
+  const { data: existing } = await admin
+    .from("subjects")
+    .select("id")
+    .eq("institute_id", instituteId)
+    .eq("name", newSubjectName)
+    .maybeSingle();
+
+  if (existing) return existing.id;
+
+  const { data: created, error } = await admin
+    .from("subjects")
+    .insert({ institute_id: instituteId, name: newSubjectName })
+    .select("id")
+    .single();
+
+  if (error || !created) return { error: `Could not create subject: ${error?.message}` };
+  return created.id;
+}
+
 interface ParsedClassInput {
-  subject: string;
   grade: GradeLevel;
   medium: ClassMedium;
   tutorId: string;
@@ -34,7 +70,6 @@ interface ParsedClassInput {
 }
 
 function parseClassInput(formData: FormData): ParsedClassInput | { error: string } {
-  const subject = String(formData.get("subject") || "").trim();
   const grade = String(formData.get("grade") || "") as GradeLevel;
   const medium = String(formData.get("medium") || "") as ClassMedium;
   const tutorId = String(formData.get("tutorId") || "");
@@ -48,7 +83,7 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
   const tutorPaymentModel = String(formData.get("tutorPaymentModel") || "") as TutorPaymentModel;
   const tutorPaymentValueRaw = String(formData.get("tutorPaymentValue") || "").trim();
 
-  if (!subject || !tutorId) return { error: "Subject and tutor are required." };
+  if (!tutorId) return { error: "Tutor is required." };
   if (!GRADES.includes(grade)) return { error: "Select a grade." };
   if (!MEDIUMS.includes(medium)) return { error: "Select a medium." };
   if (scheduleDays.length === 0) return { error: "Select at least one day." };
@@ -73,7 +108,6 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
   }
 
   return {
-    subject,
     grade,
     medium,
     tutorId,
@@ -91,17 +125,20 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
 
 export async function createClass(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const session = await requireSession();
+  const admin = createAdminClient();
+
+  const subjectId = await resolveSubjectId(admin, session.instituteId, formData);
+  if (typeof subjectId !== "string") return subjectId;
 
   const parsed = parseClassInput(formData);
   if ("error" in parsed) return parsed;
 
-  const admin = createAdminClient();
   const { data, error } = await admin
     .from("classes")
     .insert({
       institute_id: session.instituteId,
       tutor_id: parsed.tutorId,
-      subject: parsed.subject,
+      subject_id: subjectId,
       grade: parsed.grade,
       medium: parsed.medium,
       schedule_days: parsed.scheduleDays,
@@ -128,15 +165,19 @@ export async function updateClass(_prevState: ActionResult, formData: FormData):
   const classId = String(formData.get("classId") || "");
   if (!classId) return { error: "Missing class." };
 
+  const admin = createAdminClient();
+
+  const subjectId = await resolveSubjectId(admin, session.instituteId, formData);
+  if (typeof subjectId !== "string") return subjectId;
+
   const parsed = parseClassInput(formData);
   if ("error" in parsed) return parsed;
 
-  const admin = createAdminClient();
   const { error } = await admin
     .from("classes")
     .update({
       tutor_id: parsed.tutorId,
-      subject: parsed.subject,
+      subject_id: subjectId,
       grade: parsed.grade,
       medium: parsed.medium,
       schedule_days: parsed.scheduleDays,

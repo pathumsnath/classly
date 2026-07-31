@@ -10,9 +10,11 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export function CreateClassForm({
   tutors,
+  subjects,
   onCreated,
 }: {
   tutors: { id: string; name: string }[];
+  subjects: { id: string; name: string }[];
   // Defaults to navigating to the new class's detail page. The onboarding
   // wizard overrides this to advance to the next step instead.
   onCreated?: (classId: string) => void;
@@ -34,7 +36,17 @@ export function CreateClassForm({
       className="flex max-w-sm flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
     >
       <h2 className="font-semibold text-gray-900">Create a class</h2>
-      <Field label="Subject" name="subject" required />
+
+      <Select label="Subject" name="subjectId" required defaultValue="">
+        <option value="" disabled>
+          Select a subject
+        </option>
+        {subjects.map((subject) => (
+          <option key={subject.id} value={subject.id}>
+            {subject.name}
+          </option>
+        ))}
+      </Select>
 
       <Select label="Grade" name="grade" required defaultValue="">
         <option value="" disabled>

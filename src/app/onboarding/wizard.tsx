@@ -119,7 +119,7 @@ function ClassStep({
     <Card className="max-w-sm p-5">
       <form action={formAction} className="flex flex-col gap-4">
         <h2 className="text-lg font-semibold text-gray-900">Create your first class</h2>
-        <Field label="Subject" name="subject" required />
+        <Field label="Subject" name="newSubjectName" placeholder="e.g. Mathematics" required />
 
         <Select label="Grade" name="grade" required defaultValue="">
           <option value="" disabled>
