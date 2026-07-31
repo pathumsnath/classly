@@ -13,6 +13,24 @@ export function Field({
   );
 }
 
+export function Select({
+  label,
+  children,
+  ...props
+}: React.SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
+  return (
+    <label className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+      {label}
+      <select
+        {...props}
+        className="rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
+      >
+        {children}
+      </select>
+    </label>
+  );
+}
+
 export function SubmitButton({
   children,
   ...props

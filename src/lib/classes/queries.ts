@@ -1,0 +1,123 @@
+import "server-only";
+import { createClient } from "@/lib/supabase/server";
+import { requireSession } from "@/lib/auth/require-owner";
+import type { FeeType, TutorPaymentModel } from "@/lib/supabase/types";
+
+export interface ClassRow {
+  id: string;
+  subject: string;
+  tutorName: string;
+  scheduleDays: string[];
+  scheduleTime: string | null;
+  feeAmount: number;
+  feeType: FeeType;
+}
+
+export interface ClassDetail extends ClassRow {
+  tutorId: string;
+  room: string | null;
+  maxStudents: number | null;
+  tutorPaymentModel: TutorPaymentModel;
+  tutorPaymentValue: number;
+}
+
+export interface EnrolledStudentRow {
+  id: string;
+  name: string;
+  phone: string;
+  status: "active" | "inactive";
+}
+
+async function tutorNamesById(supabase: Awaited<ReturnType<typeof createClient>>, tutorIds: string[]) {
+  if (tutorIds.length === 0) return new Map<string, string>();
+  const { data } = await supabase.from("users").select("id, name").in("id", tutorIds);
+  return new Map((data ?? []).map((t) => [t.id, t.name]));
+}
+
+export async function listClasses(): Promise<ClassRow[]> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: classes } = await supabase
+    .from("classes")
+    .select("id, subject, tutor_id, schedule_days, schedule_time, fee_amount, fee_type")
+    .eq("institute_id", session.instituteId)
+    .order("created_at", { ascending: true });
+
+  if (!classes || classes.length === 0) return [];
+
+  const names = await tutorNamesById(
+    supabase,
+    classes.map((c) => c.tutor_id),
+  );
+
+  return classes.map((c) => ({
+    id: c.id,
+    subject: c.subject,
+    tutorName: names.get(c.tutor_id) ?? "Unknown",
+    scheduleDays: c.schedule_days,
+    scheduleTime: c.schedule_time,
+    feeAmount: c.fee_amount,
+    feeType: c.fee_type,
+  }));
+}
+
+export async function getClass(classId: string): Promise<ClassDetail | null> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: cls } = await supabase
+    .from("classes")
+    .select("*")
+    .eq("id", classId)
+    .eq("institute_id", session.instituteId)
+    .maybeSingle();
+
+  if (!cls) return null;
+
+  const names = await tutorNamesById(supabase, [cls.tutor_id]);
+
+  return {
+    id: cls.id,
+    subject: cls.subject,
+    tutorId: cls.tutor_id,
+    tutorName: names.get(cls.tutor_id) ?? "Unknown",
+    scheduleDays: cls.schedule_days,
+    scheduleTime: cls.schedule_time,
+    feeAmount: cls.fee_amount,
+    feeType: cls.fee_type,
+    room: cls.room,
+    maxStudents: cls.max_students,
+    tutorPaymentModel: cls.tutor_payment_model,
+    tutorPaymentValue: cls.tutor_payment_value,
+  };
+}
+
+export async function listEnrolledStudents(classId: string): Promise<EnrolledStudentRow[]> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: enrollments } = await supabase
+    .from("enrollments")
+    .select("student_id, status")
+    .eq("class_id", classId)
+    .eq("institute_id", session.instituteId);
+
+  if (!enrollments || enrollments.length === 0) return [];
+
+  const { data: students } = await supabase
+    .from("users")
+    .select("id, name, phone")
+    .in(
+      "id",
+      enrollments.map((e) => e.student_id),
+    );
+
+  const byId = new Map((students ?? []).map((s) => [s.id, s]));
+
+  return enrollments.flatMap((e) => {
+    const s = byId.get(e.student_id);
+    if (!s) return [];
+    return [{ id: s.id, name: s.name, phone: s.phone, status: e.status }];
+  });
+}
