@@ -8,7 +8,10 @@ export function AddStudentForm() {
   const [state, formAction, pending] = useActionState(addStudent, {});
 
   return (
-    <form action={formAction} className="flex max-w-sm flex-col gap-4 rounded-lg border border-gray-200 p-4">
+    <form
+      action={formAction}
+      className="flex max-w-sm flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
+    >
       <h2 className="font-semibold text-gray-900">Add a student</h2>
       <Field label="Name" name="name" required />
       <Field label="Phone" name="phone" type="tel" required />

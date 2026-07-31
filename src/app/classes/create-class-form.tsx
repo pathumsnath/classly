@@ -28,7 +28,10 @@ export function CreateClassForm({
   }, [state]);
 
   return (
-    <form action={formAction} className="flex max-w-sm flex-col gap-4 rounded-lg border border-gray-200 p-4">
+    <form
+      action={formAction}
+      className="flex max-w-sm flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
+    >
       <h2 className="font-semibold text-gray-900">Create a class</h2>
       <Field label="Subject" name="subject" required />
 
@@ -43,13 +46,15 @@ export function CreateClassForm({
         ))}
       </Select>
 
-      <fieldset className="flex flex-col gap-1 text-sm font-medium text-gray-700">
+      <fieldset className="flex flex-col gap-2 text-sm font-medium text-gray-700">
         Days
         <div className="flex flex-wrap gap-2">
           {DAYS.map((day) => (
-            <label key={day} className="flex items-center gap-1 font-normal text-gray-700">
-              <input type="checkbox" name="scheduleDays" value={day} />
-              {day}
+            <label key={day} className="cursor-pointer">
+              <input type="checkbox" name="scheduleDays" value={day} className="peer sr-only" />
+              <span className="inline-block rounded-full border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-600 transition peer-checked:border-indigo-600 peer-checked:bg-indigo-600 peer-checked:text-white">
+                {day}
+              </span>
             </label>
           ))}
         </div>

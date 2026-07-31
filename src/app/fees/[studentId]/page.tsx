@@ -1,9 +1,18 @@
 import { notFound } from "next/navigation";
+import { Receipt } from "lucide-react";
 import { listFeesForStudent } from "@/lib/fees/queries";
 import { getPerson } from "@/lib/people/queries";
 import { waiveFee } from "@/lib/fees/actions";
 import { PageShell } from "@/components/page-shell";
+import { Card, EmptyState } from "@/components/card";
 import { RecordPaymentForm } from "./record-payment-form";
+
+function statusBadgeClass(isOverdue: boolean, status: string) {
+  if (isOverdue) return "bg-red-100 text-red-700";
+  if (status === "paid") return "bg-green-100 text-green-700";
+  if (status === "partial") return "bg-yellow-100 text-yellow-700";
+  return "bg-gray-100 text-gray-600";
+}
 
 export default async function StudentFeesPage({
   params,
@@ -19,33 +28,40 @@ export default async function StudentFeesPage({
 
   return (
     <PageShell title={student.name} backHref="/fees">
-      <p className="text-sm text-gray-500">{student.phone}</p>
+      <p className="-mt-3 text-sm text-gray-500">{student.phone}</p>
 
-      <ul className="flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200">
-        {fees.length === 0 && <li className="p-4 text-sm text-gray-500">No fees yet.</li>}
-        {fees.map((fee) => (
-          <li key={fee.id} className="flex items-center justify-between gap-4 p-4">
-            <div>
-              <p className="font-medium text-gray-900">
-                {fee.subject} — {fee.month.slice(0, 7)}
-              </p>
-              <p className="text-sm text-gray-500">
-                Due LKR {fee.amountDue} · Paid LKR {fee.amountPaid} · Balance LKR {fee.balance}
-              </p>
+      {fees.length === 0 ? (
+        <EmptyState icon={Receipt} message="No fees yet." />
+      ) : (
+        <Card className="divide-y divide-gray-100">
+          {fees.map((fee) => (
+            <div key={fee.id} className="flex items-center justify-between gap-4 p-4">
+              <div>
+                <p className="font-medium text-gray-900">
+                  {fee.subject} — {fee.month.slice(0, 7)}
+                </p>
+                <p className="text-sm text-gray-500">
+                  Due LKR {fee.amountDue} · Paid LKR {fee.amountPaid} · Balance LKR {fee.balance}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(fee.isOverdue, fee.status)}`}
+                >
+                  {fee.isOverdue ? "Overdue" : fee.status}
+                </span>
+                {fee.status !== "paid" && fee.status !== "waived" && (
+                  <form action={waiveFee.bind(null, fee.id)}>
+                    <button type="submit" className="text-sm font-medium text-gray-500">
+                      Waive
+                    </button>
+                  </form>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-gray-600">{fee.isOverdue ? "Overdue" : fee.status}</span>
-              {fee.status !== "paid" && fee.status !== "waived" && (
-                <form action={waiveFee.bind(null, fee.id)}>
-                  <button type="submit" className="text-sm font-medium text-gray-500">
-                    Waive
-                  </button>
-                </form>
-              )}
-            </div>
-          </li>
-        ))}
-      </ul>
+          ))}
+        </Card>
+      )}
 
       <RecordPaymentForm fees={fees} />
     </PageShell>

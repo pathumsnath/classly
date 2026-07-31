@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { ChevronLeft, ChevronRight, Users, CalendarOff } from "lucide-react";
 import { getClassAttendanceState, todayInColombo } from "@/lib/attendance/queries";
-import { markClassCancelled, undoCancelClass } from "@/lib/attendance/actions";
+import { undoCancelClass } from "@/lib/attendance/actions";
 import { PageShell } from "@/components/page-shell";
+import { EmptyState } from "@/components/card";
 import { AttendanceForm } from "./attendance-form";
 
 function addDays(date: string, delta: number): string {
@@ -27,36 +29,40 @@ export default async function AttendancePage({
 
   return (
     <PageShell title={state.subject} backHref="/classes">
-      <div className="flex items-center gap-4 text-sm">
-        <Link href={`/attendance/${classId}?date=${addDays(date, -1)}`} className="font-medium text-indigo-600">
-          &larr; Prev day
+      <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
+        <Link
+          href={`/attendance/${classId}?date=${addDays(date, -1)}`}
+          aria-label="Previous day"
+          className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+        >
+          <ChevronLeft className="h-4 w-4" />
         </Link>
         <span className="font-medium text-gray-900">{date}</span>
-        <Link href={`/attendance/${classId}?date=${addDays(date, 1)}`} className="font-medium text-indigo-600">
-          Next day &rarr;
+        <Link
+          href={`/attendance/${classId}?date=${addDays(date, 1)}`}
+          aria-label="Next day"
+          className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+        >
+          <ChevronRight className="h-4 w-4" />
         </Link>
       </div>
 
       {state.isCancelled ? (
-        <div className="flex max-w-sm flex-col gap-2 rounded-lg border border-gray-200 p-4">
-          <p className="text-sm text-gray-600">This class was cancelled on {date}.</p>
-          <form action={undoCancelClass.bind(null, classId, date)}>
-            <button type="submit" className="text-sm font-medium text-indigo-600">
-              Undo cancellation
-            </button>
-          </form>
-        </div>
+        <EmptyState
+          icon={CalendarOff}
+          message={`This class was cancelled on ${date}.`}
+          action={
+            <form action={undoCancelClass.bind(null, classId, date)}>
+              <button type="submit" className="text-sm font-medium text-indigo-600">
+                Undo cancellation
+              </button>
+            </form>
+          }
+        />
       ) : state.students.length === 0 ? (
-        <p className="text-sm text-gray-500">No students enrolled in this class yet.</p>
+        <EmptyState icon={Users} message="No students enrolled in this class yet." />
       ) : (
-        <>
-          <AttendanceForm classId={classId} date={date} students={state.students} />
-          <form action={markClassCancelled.bind(null, classId, date)}>
-            <button type="submit" className="text-sm font-medium text-red-600">
-              Mark class as cancelled
-            </button>
-          </form>
-        </>
+        <AttendanceForm classId={classId} date={date} students={state.students} />
       )}
     </PageShell>
   );

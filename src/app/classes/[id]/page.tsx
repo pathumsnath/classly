@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CalendarDays, DoorOpen, Wallet, Users, ClipboardCheck } from "lucide-react";
 import { getClass, listEnrolledStudents } from "@/lib/classes/queries";
 import { listStudents } from "@/lib/people/queries";
 import { unenrollStudent } from "@/lib/enrollments/actions";
 import { PageShell } from "@/components/page-shell";
+import { Card, EmptyState, Avatar } from "@/components/card";
 import { EnrollForm } from "./enroll-form";
 
 export default async function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -13,36 +15,49 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
 
   const [enrolled, allStudents] = await Promise.all([listEnrolledStudents(id), listStudents()]);
 
-  const activeEnrolledIds = new Set(enrolled.filter((e) => e.status === "active").map((e) => e.id));
+  const activeEnrolled = enrolled.filter((e) => e.status === "active");
+  const activeEnrolledIds = new Set(activeEnrolled.map((e) => e.id));
   const availableStudents = allStudents.filter((s) => s.status === "active" && !activeEnrolledIds.has(s.id));
 
   return (
     <PageShell title={cls.subject} backHref="/classes">
-      <div className="max-w-sm rounded-lg border border-gray-200 p-4 text-sm text-gray-700">
-        <p>Tutor: {cls.tutorName}</p>
-        <p>Schedule: {cls.scheduleDays.join(", ") || "not set"}{cls.scheduleTime ? ` at ${cls.scheduleTime}` : ""}</p>
-        {cls.room && <p>Room: {cls.room}</p>}
-        <p>Fee: LKR {cls.feeAmount} ({cls.feeType === "monthly_flat" ? "monthly flat" : "per session"})</p>
-        <p>
-          Tutor payment: {cls.tutorPaymentValue} ({cls.tutorPaymentModel.replace("_", " ")})
+      <Card className="flex flex-col gap-3 p-5 text-sm text-gray-700">
+        <p className="flex items-center gap-2">
+          <CalendarDays className="h-4 w-4 shrink-0 text-gray-400" />
+          {cls.tutorName} · {cls.scheduleDays.join(", ") || "no schedule"}
+          {cls.scheduleTime ? ` at ${cls.scheduleTime}` : ""}
         </p>
-      </div>
+        {cls.room && (
+          <p className="flex items-center gap-2">
+            <DoorOpen className="h-4 w-4 shrink-0 text-gray-400" />
+            {cls.room}
+          </p>
+        )}
+        <p className="flex items-center gap-2">
+          <Wallet className="h-4 w-4 shrink-0 text-gray-400" />
+          LKR {cls.feeAmount} ({cls.feeType === "monthly_flat" ? "monthly flat" : "per session"}) · tutor:{" "}
+          {cls.tutorPaymentValue} ({cls.tutorPaymentModel.replace("_", " ")})
+        </p>
+      </Card>
 
-      <Link href={`/attendance/${cls.id}`} className="w-fit text-sm font-medium text-indigo-600">
+      <Link
+        href={`/attendance/${cls.id}`}
+        className="flex w-fit items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-500 hover:shadow"
+      >
+        <ClipboardCheck className="h-4 w-4" />
         Take attendance
       </Link>
 
       <div>
-        <h2 className="mb-2 font-semibold text-gray-900">Enrolled students</h2>
-        <ul className="flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200">
-          {enrolled.filter((e) => e.status === "active").length === 0 && (
-            <li className="p-4 text-sm text-gray-500">No students enrolled yet.</li>
-          )}
-          {enrolled
-            .filter((e) => e.status === "active")
-            .map((student) => (
-              <li key={student.id} className="flex items-center justify-between gap-4 p-4">
-                <div>
+        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Enrolled students</h2>
+        {activeEnrolled.length === 0 ? (
+          <EmptyState icon={Users} message="No students enrolled yet." />
+        ) : (
+          <Card className="divide-y divide-gray-100">
+            {activeEnrolled.map((student) => (
+              <div key={student.id} className="flex items-center gap-3 p-4">
+                <Avatar name={student.name} />
+                <div className="flex-1">
                   <p className="font-medium text-gray-900">{student.name}</p>
                   <p className="text-sm text-gray-500">{student.phone}</p>
                 </div>
@@ -51,9 +66,10 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
                     Unenrol
                   </button>
                 </form>
-              </li>
+              </div>
             ))}
-        </ul>
+          </Card>
+        )}
       </div>
 
       <EnrollForm classId={cls.id} students={availableStudents} />

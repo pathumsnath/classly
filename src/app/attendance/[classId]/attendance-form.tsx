@@ -1,8 +1,10 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { submitAttendance, sendAbsenceAlerts } from "@/lib/attendance/actions";
+import { CheckCircle2, XCircle, Clock, CheckCheck, MessageSquare } from "lucide-react";
+import { submitAttendance, sendAbsenceAlerts, markClassCancelled } from "@/lib/attendance/actions";
 import { FormError, SubmitButton } from "@/components/form";
+import { Card, Avatar } from "@/components/card";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 import type { AttendanceStudentRow } from "@/lib/attendance/queries";
 import { PaymentSheet } from "./payment-sheet";
@@ -13,11 +15,15 @@ const CYCLE: Record<AttendanceStatus, AttendanceStatus> = {
   late: "present",
 };
 
+const STATUS_ICONS = { present: CheckCircle2, absent: XCircle, late: Clock } as const;
+
 const STATUS_STYLES: Record<AttendanceStatus, string> = {
-  present: "bg-green-100 text-green-700",
-  absent: "bg-red-100 text-red-700",
-  late: "bg-yellow-100 text-yellow-700",
+  present: "bg-green-50 text-green-700 border-green-200",
+  absent: "bg-red-50 text-red-700 border-red-200",
+  late: "bg-yellow-50 text-yellow-700 border-yellow-200",
 };
+
+const ATTENDANCE_FORM_ID = "attendance-submit-form";
 
 function feeBadgeClass(status: string | null) {
   if (!status || status === "waived") return "bg-gray-100 text-gray-500";
@@ -48,8 +54,9 @@ function AbsenceAlertPanel({ classId, date, absentCount }: { classId: string; da
       type="button"
       onClick={handleSend}
       disabled={sending}
-      className="w-fit text-sm font-medium text-indigo-600 disabled:opacity-50"
+      className="flex w-fit items-center gap-2 text-sm font-medium text-indigo-600 disabled:opacity-50"
     >
+      <MessageSquare className="h-4 w-4" />
       {sending ? "Sending…" : "Send absence SMS to parents"}
     </button>
   );
@@ -83,64 +90,88 @@ export function AttendanceForm({
     for (const status of Object.values(statuses)) counts[status]++;
 
     return (
-      <div className="flex flex-col gap-3 rounded-lg border border-gray-200 p-4">
-        <p className="text-sm text-gray-700">
+      <Card className="flex flex-col gap-3 p-5">
+        <p className="flex items-center gap-2 text-sm font-medium text-gray-900">
+          <CheckCheck className="h-4 w-4 text-green-600" />
           Submitted: {counts.present} present, {counts.absent} absent, {counts.late} late.
         </p>
         <AbsenceAlertPanel classId={classId} date={date} absentCount={counts.absent} />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <>
-      <form action={formAction} className="flex flex-col gap-4">
+    <div className="pb-24">
+      <form id={ATTENDANCE_FORM_ID} action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="classId" value={classId} />
         <input type="hidden" name="date" value={date} />
 
         <button
           type="button"
           onClick={markAllPresent}
-          className="w-fit rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700"
+          className="flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
         >
+          <CheckCheck className="h-4 w-4" />
           Mark all present
         </button>
 
-        <ul className="flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200">
-          {students.map((student) => (
-            <li key={student.enrollmentId} className="flex items-center gap-3 p-4">
-              <input type="hidden" name="enrollmentId" value={student.enrollmentId} readOnly />
-              <input
-                type="hidden"
-                name={`status_${student.enrollmentId}`}
-                value={statuses[student.enrollmentId]}
-                readOnly
-              />
-              <button
-                type="button"
-                onClick={() => toggle(student.enrollmentId)}
-                className={`flex-1 rounded-md px-3 py-2 text-left text-sm font-medium ${STATUS_STYLES[statuses[student.enrollmentId]]}`}
-              >
-                {student.name} — {statuses[student.enrollmentId]}
-              </button>
-              <button
-                type="button"
-                disabled={!student.feePaymentId}
-                onClick={() =>
-                  student.feePaymentId &&
-                  setOpenPayment({ paymentId: student.feePaymentId, balance: student.feeBalance ?? 0 })
-                }
-                className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student.feeStatus)}`}
-              >
-                {student.feeStatus ?? "no fee"}
-              </button>
-            </li>
-          ))}
-        </ul>
+        <Card className="divide-y divide-gray-100">
+          {students.map((student) => {
+            const status = statuses[student.enrollmentId];
+            const StatusIcon = STATUS_ICONS[status];
+            return (
+              <div key={student.enrollmentId} className="flex items-center gap-3 p-4">
+                <input type="hidden" name="enrollmentId" value={student.enrollmentId} readOnly />
+                <input type="hidden" name={`status_${student.enrollmentId}`} value={status} readOnly />
+
+                <Avatar name={student.name} />
+                <p className="flex-1 truncate font-medium text-gray-900">{student.name}</p>
+
+                <button
+                  type="button"
+                  onClick={() => toggle(student.enrollmentId)}
+                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${STATUS_STYLES[status]}`}
+                >
+                  <StatusIcon className="h-3.5 w-3.5" />
+                  {status}
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!student.feePaymentId}
+                  onClick={() =>
+                    student.feePaymentId &&
+                    setOpenPayment({ paymentId: student.feePaymentId, balance: student.feeBalance ?? 0 })
+                  }
+                  className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student.feeStatus)}`}
+                >
+                  {student.feeStatus ?? "no fee"}
+                </button>
+              </div>
+            );
+          })}
+        </Card>
 
         <FormError message={state.error} />
-        <SubmitButton disabled={pending}>{pending ? "Submitting…" : "Submit attendance"}</SubmitButton>
       </form>
+
+      <form action={markClassCancelled.bind(null, classId, date)} className="mt-4">
+        <button type="submit" className="text-sm font-medium text-red-600">
+          Mark class as cancelled
+        </button>
+      </form>
+
+      {/* FR-5.7 — sticky submit, stays reachable while scrolling a long roster.
+          Lives outside the form element (form="..." associates it by id)
+          since a cancel-class form also needs to sit on this page and
+          <form> elements can't nest. */}
+      <div className="fixed inset-x-0 bottom-0 z-10 border-t border-gray-100 bg-white/95 p-4 backdrop-blur">
+        <div className="mx-auto max-w-2xl">
+          <SubmitButton form={ATTENDANCE_FORM_ID} disabled={pending}>
+            {pending ? "Submitting…" : "Submit attendance"}
+          </SubmitButton>
+        </div>
+      </div>
 
       {openPayment && (
         <PaymentSheet
@@ -149,6 +180,6 @@ export function AttendanceForm({
           onClose={() => setOpenPayment(null)}
         />
       )}
-    </>
+    </div>
   );
 }

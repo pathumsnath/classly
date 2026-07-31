@@ -18,7 +18,10 @@ export function EnrollForm({
   }
 
   return (
-    <form action={formAction} className="flex max-w-sm flex-col gap-4 rounded-lg border border-gray-200 p-4">
+    <form
+      action={formAction}
+      className="flex max-w-sm flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
+    >
       <input type="hidden" name="classId" value={classId} />
       <Select label="Enrol a student" name="studentId" required defaultValue="">
         <option value="" disabled>

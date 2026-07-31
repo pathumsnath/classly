@@ -14,12 +14,21 @@ export function RecordPaymentForm({ fees }: { fees: FeeRow[] }) {
   }
 
   return (
-    <form action={formAction} className="flex max-w-md flex-col gap-4 rounded-lg border border-gray-200 p-4">
+    <form
+      action={formAction}
+      className="flex max-w-md flex-col gap-4 rounded-xl border border-gray-100 bg-white p-5 shadow-sm"
+    >
       <h2 className="font-semibold text-gray-900">Record a payment</h2>
       <div className="flex flex-col gap-3">
         {payable.map((fee) => (
           <label key={fee.id} className="flex items-center gap-3 text-sm text-gray-700">
-            <input type="checkbox" name="paymentId" value={fee.id} defaultChecked />
+            <input
+              type="checkbox"
+              name="paymentId"
+              value={fee.id}
+              defaultChecked
+              className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+            />
             <span className="flex-1">
               {fee.subject} — {fee.month.slice(0, 7)}
             </span>
@@ -29,7 +38,7 @@ export function RecordPaymentForm({ fees }: { fees: FeeRow[] }) {
               defaultValue={fee.balance}
               min={0}
               step="0.01"
-              className="w-24 rounded-md border border-gray-300 bg-white px-2 py-1 text-right text-sm text-gray-900"
+              className="w-24 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-right text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
             />
           </label>
         ))}
@@ -49,7 +58,11 @@ export function RecordPaymentForm({ fees }: { fees: FeeRow[] }) {
       />
 
       <label className="flex items-center gap-2 text-sm text-gray-700">
-        <input type="checkbox" name="sendReceipt" />
+        <input
+          type="checkbox"
+          name="sendReceipt"
+          className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+        />
         Send SMS receipt to parent
       </label>
 

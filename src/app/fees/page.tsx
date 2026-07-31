@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { Search, Receipt } from "lucide-react";
 import { listFees } from "@/lib/fees/queries";
 import { listStudents } from "@/lib/people/queries";
 import { PageShell } from "@/components/page-shell";
+import { Card, EmptyState } from "@/components/card";
 
 function formatMonth(month: string) {
   return new Date(`${month}T00:00:00`).toLocaleDateString("en-US", {
@@ -34,53 +36,63 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   return (
     <PageShell title="Fees">
       <form className="flex max-w-sm gap-2">
-        <input
-          type="text"
-          name="q"
-          defaultValue={q ?? ""}
-          placeholder="Search student by name or phone"
-          className="flex-1 rounded-md border border-gray-300 bg-white px-3 py-2 text-base text-gray-900 outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500"
-        />
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            name="q"
+            defaultValue={q ?? ""}
+            placeholder="Search student by name or phone"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-base text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
         <button
           type="submit"
-          className="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700"
+          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
         >
           Search
         </button>
       </form>
 
-      {q && (
-        <ul className="flex max-w-sm flex-col divide-y divide-gray-200 rounded-lg border border-gray-200">
-          {searchResults.length === 0 && <li className="p-4 text-sm text-gray-500">No matching students.</li>}
-          {searchResults.map((s) => (
-            <li key={s.id} className="p-4">
-              <Link href={`/fees/${s.id}`} className="font-medium text-indigo-600">
-                {s.name}
+      {q &&
+        (searchResults.length === 0 ? (
+          <EmptyState message="No matching students." />
+        ) : (
+          <Card className="max-w-sm divide-y divide-gray-100">
+            {searchResults.map((s) => (
+              <Link key={s.id} href={`/fees/${s.id}`} className="block p-4 transition hover:bg-gray-50">
+                <p className="font-medium text-gray-900">{s.name}</p>
+                <p className="text-sm text-gray-500">{s.phone}</p>
               </Link>
-              <p className="text-sm text-gray-500">{s.phone}</p>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <ul className="flex flex-col divide-y divide-gray-200 rounded-lg border border-gray-200">
-        {fees.length === 0 && <li className="p-4 text-sm text-gray-500">No fee records yet.</li>}
-        {fees.map((fee) => (
-          <li key={fee.id} className="flex items-center justify-between gap-4 p-4">
-            <div>
-              <Link href={`/fees/${fee.studentId}`} className="font-medium text-indigo-600">
-                {fee.studentName}
-              </Link>
-              <p className="text-sm text-gray-500">
-                {fee.subject} · {formatMonth(fee.month)} · LKR {fee.balance} due
-              </p>
-            </div>
-            <span className={`rounded-full px-2 py-1 text-xs font-medium ${statusBadgeClass(fee.isOverdue, fee.status)}`}>
-              {fee.isOverdue ? "Overdue" : fee.status}
-            </span>
-          </li>
+            ))}
+          </Card>
         ))}
-      </ul>
+
+      {fees.length === 0 ? (
+        <EmptyState icon={Receipt} message="No fee records yet." />
+      ) : (
+        <Card className="divide-y divide-gray-100">
+          {fees.map((fee) => (
+            <Link
+              key={fee.id}
+              href={`/fees/${fee.studentId}`}
+              className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
+            >
+              <div>
+                <p className="font-medium text-gray-900">{fee.studentName}</p>
+                <p className="text-sm text-gray-500">
+                  {fee.subject} · {formatMonth(fee.month)} · LKR {fee.balance} due
+                </p>
+              </div>
+              <span
+                className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(fee.isOverdue, fee.status)}`}
+              >
+                {fee.isOverdue ? "Overdue" : fee.status}
+              </span>
+            </Link>
+          ))}
+        </Card>
+      )}
     </PageShell>
   );
 }
