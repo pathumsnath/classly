@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getClass, listEnrolledStudents } from "@/lib/classes/queries";
 import { listStudents } from "@/lib/people/queries";
@@ -26,6 +27,10 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
           Tutor payment: {cls.tutorPaymentValue} ({cls.tutorPaymentModel.replace("_", " ")})
         </p>
       </div>
+
+      <Link href={`/attendance/${cls.id}`} className="w-fit text-sm font-medium text-indigo-600">
+        Take attendance
+      </Link>
 
       <div>
         <h2 className="mb-2 font-semibold text-gray-900">Enrolled students</h2>
