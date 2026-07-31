@@ -12,12 +12,10 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+/* Fixed light theme for now: the UI text colors (text-gray-900 etc.) are
+   chosen assuming a white background. Real dark-mode support is Phase D
+   polish, not a Phase A concern — until then, don't follow OS dark mode,
+   since that makes dark-on-dark text unreadable. */
 
 body {
   background: var(--background);
