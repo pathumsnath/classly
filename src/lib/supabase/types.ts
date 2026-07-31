@@ -24,6 +24,7 @@ export interface Database {
           name: string;
           phone: string;
           email: string | null;
+          parent_phone: string | null;
           created_at: string;
         };
         Insert: {
@@ -32,6 +33,7 @@ export interface Database {
           name: string;
           phone: string;
           email?: string | null;
+          parent_phone?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["users"]["Insert"]>;
@@ -44,6 +46,7 @@ export interface Database {
           address: string | null;
           owner_id: string;
           logo_url: string | null;
+          onboarding_completed_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -52,6 +55,7 @@ export interface Database {
           address?: string | null;
           owner_id: string;
           logo_url?: string | null;
+          onboarding_completed_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["institutes"]["Insert"]>;
@@ -93,6 +97,46 @@ export interface Database {
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["institute_tutors"]["Insert"]>;
+        Relationships: [];
+      };
+      institute_students: {
+        Row: {
+          id: string;
+          institute_id: string;
+          student_id: string;
+          joined_date: string | null;
+          status: TutorStatus;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institute_id: string;
+          student_id: string;
+          joined_date?: string | null;
+          status?: TutorStatus;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["institute_students"]["Insert"]>;
+        Relationships: [];
+      };
+      class_cancellations: {
+        Row: {
+          id: string;
+          institute_id: string;
+          class_id: string;
+          date: string;
+          recorded_by: string;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          institute_id: string;
+          class_id: string;
+          date: string;
+          recorded_by: string;
+          recorded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["class_cancellations"]["Insert"]>;
         Relationships: [];
       };
       classes: {

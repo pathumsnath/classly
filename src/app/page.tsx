@@ -24,11 +24,19 @@ export default async function DashboardPage() {
       </p>
       <p className="text-sm text-gray-500">{session.phone}</p>
 
-      {session.role === "owner" && (
-        <Link href="/staff/invite" className="text-sm font-medium text-indigo-600">
-          Add admin staff
+      <nav className="flex flex-col gap-2">
+        <Link href="/people/tutors" className="text-sm font-medium text-indigo-600">
+          Tutors
         </Link>
-      )}
+        <Link href="/people/students" className="text-sm font-medium text-indigo-600">
+          Students
+        </Link>
+        {session.role === "owner" && (
+          <Link href="/staff/invite" className="text-sm font-medium text-indigo-600">
+            Add admin staff
+          </Link>
+        )}
+      </nav>
 
       <form action={logout}>
         <button type="submit" className="w-fit text-sm font-medium text-red-600">
