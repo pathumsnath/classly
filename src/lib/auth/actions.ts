@@ -47,6 +47,22 @@ export async function signupOwner(
   const authUserId = signUpData.user.id;
   const admin = createAdminClient();
 
+  // Resume, don't recreate: if the client timed out waiting for a previous
+  // attempt's response, Supabase Auth reuses the same (still-unverified)
+  // identity on retry rather than erroring. If we already fully provisioned
+  // this auth user, just continue to OTP instead of re-inserting (which
+  // would hit the auth_user_id unique constraint) and treating that as a
+  // fresh failure.
+  const { data: existing } = await admin
+    .from("users")
+    .select("id")
+    .eq("auth_user_id", authUserId)
+    .maybeSingle();
+
+  if (existing) {
+    redirect(`/verify-otp?phone=${encodeURIComponent(phone)}`);
+  }
+
   const { data: userRow, error: userError } = await admin
     .from("users")
     .insert({ auth_user_id: authUserId, name: ownerName, phone, email: email || null })
@@ -54,7 +70,11 @@ export async function signupOwner(
     .single();
 
   if (userError || !userRow) {
-    await admin.auth.admin.deleteUser(authUserId);
+    // Do NOT delete the auth user here: authUserId may belong to a
+    // previous successful attempt (see the resume check above) — deleting
+    // it would silently orphan that prior signup via the auth_user_id
+    // ON DELETE SET NULL foreign key, which is exactly the bug this
+    // comment used to cause.
     return { error: `Could not create user profile: ${userError?.message}` };
   }
 
@@ -65,7 +85,6 @@ export async function signupOwner(
     .single();
 
   if (instituteError || !instituteRow) {
-    await admin.auth.admin.deleteUser(authUserId);
     return { error: `Could not create institute: ${instituteError?.message}` };
   }
 
@@ -74,7 +93,6 @@ export async function signupOwner(
     .insert({ user_id: userRow.id, institute_id: instituteRow.id, role: "owner" });
 
   if (roleError) {
-    await admin.auth.admin.deleteUser(authUserId);
     return { error: `Could not assign owner role: ${roleError.message}` };
   }
 
