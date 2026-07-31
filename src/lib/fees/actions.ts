@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
+import { sendSms } from "@/lib/sms";
 import type { PaymentMethod } from "@/lib/supabase/types";
 
 export interface ActionResult {
@@ -27,18 +28,21 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
 
   const reference = String(formData.get("reference") || "").trim() || null;
   const paidDate = String(formData.get("paidDate") || "") || new Date().toISOString().slice(0, 10);
+  const sendReceipt = formData.get("sendReceipt") === "on";
 
   const admin = createAdminClient();
 
   const { data: payments, error: fetchError } = await admin
     .from("payments")
-    .select("id, amount_due, amount_paid")
+    .select("id, student_id, amount_due, amount_paid")
     .eq("institute_id", session.instituteId)
     .in("id", paymentIds);
 
   if (fetchError || !payments || payments.length === 0) {
     return { error: "Could not load the selected fees." };
   }
+
+  let totalRecorded = 0;
 
   for (const payment of payments) {
     const amountRaw = String(formData.get(`amount_${payment.id}`) || "").trim();
@@ -66,9 +70,41 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
       .eq("id", payment.id);
 
     if (error) return { error: `Could not record payment: ${error.message}` };
+
+    totalRecorded += amount;
   }
 
   revalidatePath("/fees");
+
+  // FR-6.8 — explicit opt-in only (FR-9.3: never silent bulk). A failed
+  // SMS send never undoes an already-recorded payment — it's logged and
+  // swallowed, not surfaced as an action error.
+  if (sendReceipt && totalRecorded > 0) {
+    const studentId = payments[0].student_id;
+    const { data: student } = await admin
+      .from("users")
+      .select("name, phone, parent_phone")
+      .eq("id", studentId)
+      .maybeSingle();
+
+    if (student) {
+      const to = student.parent_phone || student.phone;
+      const message = `Payment received: LKR ${totalRecorded.toFixed(2)} for ${student.name} at ${session.instituteName}. Thank you.`;
+
+      try {
+        await sendSms({ to, message });
+        await admin.from("notifications").insert({
+          user_id: studentId,
+          institute_id: session.instituteId,
+          type: "receipt",
+          message,
+        });
+      } catch (err) {
+        console.error("Failed to send fee receipt SMS:", err);
+      }
+    }
+  }
+
   return { success: true };
 }
 

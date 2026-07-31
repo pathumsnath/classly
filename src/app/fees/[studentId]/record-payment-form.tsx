@@ -48,6 +48,11 @@ export function RecordPaymentForm({ fees }: { fees: FeeRow[] }) {
         defaultValue={new Date().toISOString().slice(0, 10)}
       />
 
+      <label className="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" name="sendReceipt" />
+        Send SMS receipt to parent
+      </label>
+
       <FormError message={state.error} />
       <SubmitButton disabled={pending}>{pending ? "Recording…" : "Record payment"}</SubmitButton>
     </form>

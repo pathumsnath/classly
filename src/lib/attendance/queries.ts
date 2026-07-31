@@ -69,6 +69,7 @@ export interface AttendanceStudentRow {
   status: AttendanceStatus | null;
   feeStatus: PaymentStatus | null;
   feeBalance: number | null;
+  feePaymentId: string | null;
 }
 
 export interface ClassAttendanceState {
@@ -118,7 +119,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     supabase.from("attendance").select("enrollment_id, status").eq("date", date).in("enrollment_id", enrollmentIds),
     supabase
       .from("payments")
-      .select("student_id, status, balance")
+      .select("id, student_id, status, balance")
       .eq("class_id", classId)
       .eq("month", month)
       .in("student_id", studentIds),
@@ -137,6 +138,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
       status: attendanceByEnrollment.get(e.id) ?? null,
       feeStatus: fee?.status ?? null,
       feeBalance: fee?.balance ?? null,
+      feePaymentId: fee?.id ?? null,
     };
   });
 

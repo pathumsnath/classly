@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
+import { sendSms } from "@/lib/sms";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 
 export interface ActionResult {
@@ -80,4 +81,52 @@ export async function undoCancelClass(classId: string, date: string): Promise<vo
   if (error) throw new Error(`Could not undo cancellation: ${error.message}`);
 
   revalidatePath(`/attendance/${classId}`);
+}
+
+// FR-5.7 — explicit, opt-in only (FR-9.3: never silent bulk). Only
+// students actually marked absent this date get texted, never the whole
+// class. A per-student send failure is logged and skipped, not fatal to
+// the rest of the batch.
+export async function sendAbsenceAlerts(classId: string, date: string): Promise<{ sent: number }> {
+  const session = await requireSession();
+  const admin = createAdminClient();
+
+  const { data: absentRows } = await admin
+    .from("attendance")
+    .select("enrollment_id")
+    .eq("class_id", classId)
+    .eq("date", date)
+    .eq("status", "absent");
+
+  if (!absentRows || absentRows.length === 0) return { sent: 0 };
+
+  const enrollmentIds = absentRows.map((a) => a.enrollment_id);
+  const { data: enrollments } = await admin.from("enrollments").select("student_id").in("id", enrollmentIds);
+  const studentIds = [...new Set((enrollments ?? []).map((e) => e.student_id))];
+
+  const [{ data: students }, { data: cls }] = await Promise.all([
+    admin.from("users").select("id, name, phone, parent_phone").in("id", studentIds),
+    admin.from("classes").select("subject").eq("id", classId).maybeSingle(),
+  ]);
+
+  let sent = 0;
+  for (const student of students ?? []) {
+    const to = student.parent_phone || student.phone;
+    const message = `${student.name} was marked absent in ${cls?.subject ?? "class"} on ${date}. - ${session.instituteName}`;
+
+    try {
+      await sendSms({ to, message });
+      await admin.from("notifications").insert({
+        user_id: student.id,
+        institute_id: session.instituteId,
+        type: "attendance_alert",
+        message,
+      });
+      sent++;
+    } catch (err) {
+      console.error("Failed to send absence alert:", err);
+    }
+  }
+
+  return { sent };
 }
