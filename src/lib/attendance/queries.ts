@@ -1,18 +1,12 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
+import { colomboNow, todayInColombo } from "@/lib/time";
 import type { AttendanceStatus, PaymentStatus } from "@/lib/supabase/types";
 
+export { todayInColombo };
+
 const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-
-function colomboNow(): Date {
-  return new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Colombo" }));
-}
-
-export function todayInColombo(): string {
-  const now = colomboNow();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-}
 
 export interface TodayClassRow {
   id: string;

@@ -1,6 +1,8 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
+import { isOverdue as computeIsOverdue } from "@/lib/fees/status";
+import { currentMonthInColombo } from "@/lib/time";
 import type { PaymentStatus } from "@/lib/supabase/types";
 
 export interface FeeRow {
@@ -47,11 +49,11 @@ async function toFeeRows(
   const studentById = new Map((students ?? []).map((s) => [s.id, s]));
   const subjectByClassId = new Map((classes ?? []).map((c) => [c.id, c.subject]));
 
-  const currentMonth = new Date().toISOString().slice(0, 7); // "YYYY-MM"
+  const currentMonth = currentMonthInColombo();
 
   const rows: FeeRow[] = payments.map((p) => {
     const student = studentById.get(p.student_id);
-    const isOverdue = (p.status === "pending" || p.status === "partial") && p.month.slice(0, 7) < currentMonth;
+    const isOverdue = computeIsOverdue(p.status, p.month, currentMonth);
     return {
       id: p.id,
       studentId: p.student_id,

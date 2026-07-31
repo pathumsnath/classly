@@ -42,7 +42,13 @@ export default async function DashboardPage() {
         <Link href="/people/students">Students</Link>
         <Link href="/classes">Classes</Link>
         <Link href="/fees">Fees</Link>
-        {session.role === "owner" && <Link href="/staff/invite">Add admin staff</Link>}
+        {session.role === "owner" && (
+          <>
+            <Link href="/salaries">Salaries</Link>
+            <Link href="/money">Money</Link>
+            <Link href="/staff/invite">Add admin staff</Link>
+          </>
+        )}
       </nav>
 
       <div>
