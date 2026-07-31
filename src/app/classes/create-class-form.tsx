@@ -1,13 +1,31 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { createClass } from "@/lib/classes/actions";
 import { Field, FormError, Select, SubmitButton } from "@/components/form";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
-export function CreateClassForm({ tutors }: { tutors: { id: string; name: string }[] }) {
+export function CreateClassForm({
+  tutors,
+  onCreated,
+}: {
+  tutors: { id: string; name: string }[];
+  // Defaults to navigating to the new class's detail page. The onboarding
+  // wizard overrides this to advance to the next step instead.
+  onCreated?: (classId: string) => void;
+}) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(createClass, {});
+
+  useEffect(() => {
+    if (state.success && state.classId) {
+      if (onCreated) onCreated(state.classId);
+      else router.push(`/classes/${state.classId}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
 
   return (
     <form action={formAction} className="flex max-w-sm flex-col gap-4 rounded-lg border border-gray-200 p-4">

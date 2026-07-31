@@ -1,7 +1,6 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { redirect } from "next/navigation";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
 import type { FeeType, TutorPaymentModel } from "@/lib/supabase/types";
@@ -9,6 +8,7 @@ import type { FeeType, TutorPaymentModel } from "@/lib/supabase/types";
 export interface ActionResult {
   error?: string;
   success?: boolean;
+  classId?: string;
 }
 
 const FEE_TYPES: FeeType[] = ["monthly_flat", "per_session"];
@@ -100,7 +100,7 @@ export async function createClass(_prevState: ActionResult, formData: FormData):
   if (error || !data) return { error: `Could not create class: ${error?.message}` };
 
   revalidatePath("/classes");
-  redirect(`/classes/${data.id}`);
+  return { success: true, classId: data.id };
 }
 
 export async function updateClass(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {

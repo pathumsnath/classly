@@ -7,6 +7,8 @@ import { requireSession } from "@/lib/auth/require-owner";
 export interface ActionResult {
   error?: string;
   success?: boolean;
+  tutorId?: string;
+  tutorName?: string;
 }
 
 type AdminClient = ReturnType<typeof createAdminClient>;
@@ -64,7 +66,7 @@ export async function addTutor(_prevState: ActionResult, formData: FormData): Pr
   if (error) return { error: `Could not add tutor: ${error.message}` };
 
   revalidatePath("/people/tutors");
-  return { success: true };
+  return { success: true, tutorId: person.id, tutorName: name };
 }
 
 export async function updateTutor(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
