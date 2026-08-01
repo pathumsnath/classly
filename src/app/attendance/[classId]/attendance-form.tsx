@@ -75,10 +75,12 @@ export function AttendanceForm({
   classId,
   date,
   students,
+  readOnly = false,
 }: {
   classId: string;
   date: string;
   students: AttendanceStudentRow[];
+  readOnly?: boolean;
 }) {
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>(() =>
     Object.fromEntries(students.map((s) => [s.enrollmentId, s.status ?? "present"])),
@@ -102,6 +104,56 @@ export function AttendanceForm({
 
   function toggle(enrollmentId: string) {
     setStatuses((prev) => ({ ...prev, [enrollmentId]: CYCLE[prev[enrollmentId]] }));
+  }
+
+  // Tutors get a view-only roster — no toggling status, no submitting, no
+  // recording payments, just what's already on record.
+  if (readOnly) {
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Find a student…"
+            className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+          />
+        </div>
+
+        {visibleStudents.length === 0 ? (
+          <p className="px-1 text-sm text-gray-500">No students match &ldquo;{query}&rdquo;.</p>
+        ) : (
+          <Card className="divide-y divide-gray-100">
+            {visibleStudents.map((student) => {
+              const status = statuses[student.enrollmentId];
+              const StatusIcon = STATUS_ICONS[status];
+              return (
+                <div key={student.enrollmentId} className="flex flex-col gap-2 p-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={student.name} />
+                    <p className="flex-1 font-medium text-gray-900">{student.name}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pl-12">
+                    <span
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium ${STATUS_STYLES[status]}`}
+                    >
+                      <StatusIcon className="h-3.5 w-3.5" />
+                      {status}
+                    </span>
+                    <span className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}>
+                      {feeBadgeLabel(student)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        )}
+      </div>
+    );
   }
 
   if (state.success) {

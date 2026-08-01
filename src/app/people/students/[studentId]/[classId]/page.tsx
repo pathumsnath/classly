@@ -1,8 +1,9 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getPerson } from "@/lib/people/queries";
 import { getClass } from "@/lib/classes/queries";
 import { listFeesForStudentInClass } from "@/lib/fees/queries";
 import { listAttendanceForStudentInClass } from "@/lib/attendance/queries";
+import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { ClassTabs } from "./class-tabs";
 
@@ -12,6 +13,9 @@ export default async function StudentClassDetailPage({
   params: Promise<{ studentId: string; classId: string }>;
 }) {
   const { studentId, classId } = await params;
+
+  const session = await getSessionInfo();
+  if (!session || session.role === "tutor") redirect("/");
 
   const [student, cls] = await Promise.all([getPerson(studentId), getClass(classId)]);
   if (!student || !cls) notFound();

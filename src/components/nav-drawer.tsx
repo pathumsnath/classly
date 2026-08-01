@@ -17,7 +17,7 @@ export function NavDrawer({
   userName: string;
 }) {
   const [open, setOpen] = useState(false);
-  const items = role === "owner" ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
+  const items = role === "owner" ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : role === "admin_staff" ? NAV_ITEMS : [];
 
   return (
     <>
@@ -51,7 +51,7 @@ export function NavDrawer({
           <div>
             <p className="font-bold text-gray-900">{instituteName}</p>
             <p className="text-sm text-gray-500">
-              {userName} · {role === "owner" ? "Owner" : "Admin Staff"}
+              {userName} · {role === "owner" ? "Owner" : role === "admin_staff" ? "Admin Staff" : "Tutor"}
             </p>
           </div>
           <button

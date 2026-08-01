@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { BookOpen, Wallet } from "lucide-react";
 import { getPerson } from "@/lib/people/queries";
 import { listClassesForTutor } from "@/lib/classes/queries";
@@ -8,6 +8,7 @@ import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
+import { InviteTutorButton } from "./invite-tutor-button";
 
 function formatMonth(month: string) {
   return new Date(`${month}T00:00:00`).toLocaleDateString("en-US", {
@@ -24,10 +25,12 @@ export default async function TutorDetailPage({
 }) {
   const { tutorId } = await params;
 
+  const session = await getSessionInfo();
+  if (!session || session.role === "tutor") redirect("/");
+
   const tutor = await getPerson(tutorId);
   if (!tutor) notFound();
 
-  const session = await getSessionInfo();
   const [classes, salaryHistory] = await Promise.all([
     listClassesForTutor(tutorId),
     session?.role === "owner" ? listSalaryPaymentsForTutor(tutorId) : Promise.resolve(null),
@@ -36,6 +39,13 @@ export default async function TutorDetailPage({
   return (
     <PageShell title={tutor.name} backHref="/people/tutors">
       <p className="-mt-3 text-sm text-gray-500">{tutor.phone}</p>
+
+      {session?.role === "owner" &&
+        (tutor.hasLogin ? (
+          <p className="-mt-3 text-sm text-gray-500">Has login access.</p>
+        ) : (
+          <InviteTutorButton tutorId={tutorId} />
+        ))}
 
       <div>
         <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Classes</h2>

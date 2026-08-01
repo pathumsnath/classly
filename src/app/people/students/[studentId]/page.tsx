@@ -1,10 +1,11 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { GraduationCap, Wallet } from "lucide-react";
 import { getPerson } from "@/lib/people/queries";
 import { listClassesForStudent } from "@/lib/classes/queries";
 import { getWalletBalance } from "@/lib/wallet/queries";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
+import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 
@@ -22,6 +23,9 @@ export default async function StudentDetailPage({
   params: Promise<{ studentId: string }>;
 }) {
   const { studentId } = await params;
+
+  const session = await getSessionInfo();
+  if (!session || session.role === "tutor") redirect("/");
 
   const student = await getPerson(studentId);
   if (!student) notFound();

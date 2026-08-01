@@ -200,6 +200,64 @@ export async function inviteAdminStaff(
   return { success: true };
 }
 
+// Owner-initiated, from the tutor's own profile page — unlike
+// inviteAdminStaff this tutor already exists as a users row (added via
+// addTutor), so no find-or-create by phone is needed, just linking a
+// login onto the existing record.
+export async function inviteTutor(tutorId: string): Promise<ActionResult> {
+  let session;
+  try {
+    session = await requireOwner();
+  } catch (err) {
+    return { error: err instanceof ForbiddenError ? err.message : "Not authorized." };
+  }
+
+  const admin = createAdminClient();
+
+  const { data: tutor } = await admin.from("users").select("id, phone, auth_user_id").eq("id", tutorId).maybeSingle();
+
+  if (!tutor) return { error: "Tutor not found." };
+  if (tutor.auth_user_id) return { error: "This tutor already has a login account." };
+
+  const { data: link } = await admin
+    .from("institute_tutors")
+    .select("id")
+    .eq("institute_id", session.instituteId)
+    .eq("tutor_id", tutorId)
+    .maybeSingle();
+  if (!link) return { error: "This person isn't a tutor at your institute." };
+
+  const tempPassword = crypto.randomUUID() + crypto.randomUUID();
+  const { data: authUser, error: authError } = await admin.auth.admin.createUser({
+    phone: tutor.phone,
+    password: tempPassword,
+    phone_confirm: true,
+  });
+
+  if (authError || !authUser.user) {
+    return { error: `Could not create login account: ${authError?.message}` };
+  }
+
+  await admin.from("users").update({ auth_user_id: authUser.user.id }).eq("id", tutorId);
+
+  const { error: roleError } = await admin
+    .from("user_roles")
+    .insert({ user_id: tutorId, institute_id: session.instituteId, role: "tutor" });
+
+  if (roleError) {
+    return { error: `Could not assign tutor role: ${roleError.message}` };
+  }
+
+  const token = createInviteToken(authUser.user.id);
+  const inviteLink = `${process.env.NEXT_PUBLIC_APP_URL}/set-password?token=${token}`;
+  await sendSms({
+    to: tutor.phone,
+    message: `You've been given login access on Classly. Set your password: ${inviteLink}`,
+  });
+
+  return { success: true };
+}
+
 // FR-1.3 — password reset via OTP, step 2: consume a verified OTP session
 // (established client-side via verifyOtp) and set the new password.
 export async function updatePassword(

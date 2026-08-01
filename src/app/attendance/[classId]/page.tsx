@@ -4,6 +4,7 @@ import { ChevronLeft, ChevronRight, Users, CalendarOff } from "lucide-react";
 import { getClassAttendanceState, todayInColombo } from "@/lib/attendance/queries";
 import { weekOfMonth } from "@/lib/time";
 import { undoCancelClass } from "@/lib/attendance/actions";
+import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { EmptyState } from "@/components/card";
 import { AttendanceForm } from "./attendance-form";
@@ -28,8 +29,11 @@ export default async function AttendancePage({
   const state = await getClassAttendanceState(classId, date);
   if (!state) notFound();
 
+  const session = await getSessionInfo();
+  const readOnly = session?.role === "tutor";
+
   return (
-    <PageShell title={state.subject} backHref="/classes">
+    <PageShell title={state.subject} backHref={readOnly ? "/" : "/classes"}>
       <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
         <Link
           href={`/attendance/${classId}?date=${addDays(date, -1)}`}
@@ -56,17 +60,19 @@ export default async function AttendancePage({
           icon={CalendarOff}
           message={`This class was cancelled on ${date}.`}
           action={
-            <form action={undoCancelClass.bind(null, classId, date)}>
-              <button type="submit" className="text-sm font-medium text-indigo-600">
-                Undo cancellation
-              </button>
-            </form>
+            readOnly ? undefined : (
+              <form action={undoCancelClass.bind(null, classId, date)}>
+                <button type="submit" className="text-sm font-medium text-indigo-600">
+                  Undo cancellation
+                </button>
+              </form>
+            )
           }
         />
       ) : state.students.length === 0 ? (
         <EmptyState icon={Users} message="No students enrolled in this class yet." />
       ) : (
-        <AttendanceForm classId={classId} date={date} students={state.students} />
+        <AttendanceForm classId={classId} date={date} students={state.students} readOnly={readOnly} />
       )}
     </PageShell>
   );

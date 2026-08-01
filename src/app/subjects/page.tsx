@@ -1,11 +1,16 @@
+import { redirect } from "next/navigation";
 import { BookOpen } from "lucide-react";
 import { listSubjects } from "@/lib/subjects/queries";
 import { setSubjectStatus } from "@/lib/subjects/actions";
+import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 import { AddSubjectForm } from "./add-subject-form";
 
 export default async function SubjectsPage() {
+  const session = await getSessionInfo();
+  if (!session || session.role === "tutor") redirect("/");
+
   const subjects = await listSubjects();
 
   return (

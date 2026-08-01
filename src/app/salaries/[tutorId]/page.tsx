@@ -14,9 +14,10 @@ export default async function TutorSalaryPage({
   searchParams: Promise<{ month?: string }>;
 }) {
   const session = await getSessionInfo();
-  if (!session || session.role !== "owner") redirect("/");
-
   const { tutorId } = await params;
+  const isSelf = session?.role === "tutor" && session.userId === tutorId;
+  if (!session || (session.role !== "owner" && !isSelf)) redirect("/");
+
   const { month: monthParam } = await searchParams;
   const month = monthParam || currentMonthInColombo();
 
@@ -24,7 +25,7 @@ export default async function TutorSalaryPage({
   if (!salary) notFound();
 
   return (
-    <PageShell title={salary.tutorName} backHref={`/salaries?month=${month}`}>
+    <PageShell title={salary.tutorName} backHref={isSelf ? "/" : `/salaries?month=${month}`}>
       <p className="-mt-3 text-sm text-gray-500">
         {new Date(`${month}T00:00:00`).toLocaleDateString("en-US", {
           month: "long",
@@ -87,7 +88,7 @@ export default async function TutorSalaryPage({
 
         <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
           <p className="font-medium text-gray-900">Total: LKR {salary.total.toFixed(2)}</p>
-          {salary.status !== "paid" && (
+          {salary.status !== "paid" && session.role === "owner" && (
             <form action={markSalaryPaid.bind(null, salary.tutorId, month, salary.total)}>
               <button type="submit" className="text-sm font-medium text-indigo-600">
                 Mark as paid

@@ -21,8 +21,9 @@ export interface TodayClassRow {
 
 // FR-5.1 — today's classes, color-coded now/upcoming/done. "Done" also
 // covers classes already submitted or cancelled for today, regardless of
-// what time it is.
-export async function getTodaysClasses(): Promise<TodayClassRow[]> {
+// what time it is. `tutorId` scopes this to one tutor's own classes (the
+// tutor dashboard); omitted, it's institute-wide (owner/admin_staff).
+export async function getTodaysClasses(tutorId?: string): Promise<TodayClassRow[]> {
   const session = await requireSession();
   const supabase = await createClient();
 
@@ -30,10 +31,13 @@ export async function getTodaysClasses(): Promise<TodayClassRow[]> {
   const weekday = WEEKDAY_NAMES[now.getDay()];
   const date = todayInColombo();
 
-  const { data: classes } = await supabase
+  let classesQuery = supabase
     .from("classes")
     .select("id, subject_id, schedule_start_time, schedule_end_time, schedule_days")
     .eq("institute_id", session.instituteId);
+  if (tutorId) classesQuery = classesQuery.eq("tutor_id", tutorId);
+
+  const { data: classes } = await classesQuery;
 
   const todays = (classes ?? []).filter((c) => c.schedule_days.includes(weekday));
   if (todays.length === 0) return [];
@@ -112,12 +116,16 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
 
   const { data: cls } = await supabase
     .from("classes")
-    .select("id, subject_id")
+    .select("id, subject_id, tutor_id")
     .eq("id", classId)
     .eq("institute_id", session.instituteId)
     .maybeSingle();
 
   if (!cls) return null;
+  // A tutor can only view attendance for their own classes — everyone
+  // else (owner/admin_staff) is institute-wide, matching the classes_select
+  // RLS policy this query already relies on.
+  if (session.role === "tutor" && cls.tutor_id !== session.userId) return null;
 
   const subjectNames = await subjectNamesById(supabase, [cls.subject_id]);
   const subject = subjectNames.get(cls.subject_id) ?? "Unknown";

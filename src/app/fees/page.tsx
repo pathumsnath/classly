@@ -1,7 +1,9 @@
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Search, Receipt } from "lucide-react";
 import { listFees } from "@/lib/fees/queries";
 import { listStudents } from "@/lib/people/queries";
+import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 
@@ -21,6 +23,9 @@ function statusBadgeClass(isOverdue: boolean, status: string) {
 }
 
 export default async function FeesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const session = await getSessionInfo();
+  if (!session || session.role === "tutor") redirect("/");
+
   const { q } = await searchParams;
   const fees = await listFees();
 

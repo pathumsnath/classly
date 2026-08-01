@@ -1,9 +1,10 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { Receipt } from "lucide-react";
 import { listFeesForStudent } from "@/lib/fees/queries";
 import { getPerson } from "@/lib/people/queries";
 import { waiveFee } from "@/lib/fees/actions";
 import { getWalletBalance } from "@/lib/wallet/queries";
+import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 import { RecordPaymentForm } from "./record-payment-form";
@@ -21,6 +22,9 @@ export default async function StudentFeesPage({
   params: Promise<{ studentId: string }>;
 }) {
   const { studentId } = await params;
+
+  const session = await getSessionInfo();
+  if (!session || session.role === "tutor") redirect("/");
 
   const student = await getPerson(studentId);
   if (!student) notFound();

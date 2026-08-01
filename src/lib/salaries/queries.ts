@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { requireOwner } from "@/lib/auth/require-owner";
+import { requireOwner, requireSession, ForbiddenError } from "@/lib/auth/require-owner";
 import { calculateClassSalary, type ClassSalaryBreakdown } from "./calculate";
 import { subjectNamesById } from "@/lib/subjects/queries";
 import type { PaymentMethod, SalaryStatus } from "@/lib/supabase/types";
@@ -14,13 +14,18 @@ export interface TutorSalary {
   paidAmount: number | null;
 }
 
-// FR-7.3/7.6 — owner-only (requireOwner, plus salary_payments' own RLS as
-// a second layer — see plan). Empty result is expected and fine before
-// real fee/attendance data exists. `filterTutorIds` lets the single-tutor
-// detail page reuse this without computing every other tutor's breakdown
-// just to discard it.
+// FR-7.3/7.6 — owner-only, with one carve-out: a tutor may request their
+// own salary alone (filterTutorIds === [their own id]), for the tutor
+// dashboard's self-view. Anything broader than that stays owner-only.
+// salary_payments' own RLS enforces the same carve-out as a second layer.
+// `filterTutorIds` also lets the single-tutor detail page reuse this
+// without computing every other tutor's breakdown just to discard it.
 export async function getTutorSalaries(month: string, filterTutorIds?: string[]): Promise<TutorSalary[]> {
-  const session = await requireOwner();
+  const session = await requireSession();
+  const isSelfOnly = filterTutorIds?.length === 1 && filterTutorIds[0] === session.userId;
+  if (session.role !== "owner" && !(session.role === "tutor" && isSelfOnly)) {
+    throw new ForbiddenError("This action is restricted to the institute owner.");
+  }
   const supabase = await createClient();
 
   let tutorLinksQuery = supabase
