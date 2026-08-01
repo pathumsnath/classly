@@ -32,7 +32,7 @@ export function TopProgressBar() {
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
 
       const anchor = (e.target as HTMLElement)?.closest("a");
       if (!anchor) return;
@@ -62,8 +62,12 @@ export function TopProgressBar() {
       }, 150);
     }
 
-    document.addEventListener("click", handleClick);
-    return () => document.removeEventListener("click", handleClick);
+    // Capture phase: must run before Next.js's <Link> onClick handler,
+    // which calls preventDefault() to do its own client-side navigation —
+    // by the bubble phase (a plain addEventListener default) that's
+    // already happened and there'd be nothing left to detect.
+    document.addEventListener("click", handleClick, true);
+    return () => document.removeEventListener("click", handleClick, true);
   }, [pathname, searchParams]);
 
   if (!visible) return null;
