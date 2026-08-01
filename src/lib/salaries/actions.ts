@@ -30,3 +30,63 @@ export async function markSalaryPaid(tutorId: string, month: string, amount: num
   revalidatePath("/salaries");
   revalidatePath(`/salaries/${tutorId}`);
 }
+
+export interface ActionResult {
+  error?: string;
+  success?: boolean;
+}
+
+// Records money a tutor already drew mid-month (advance against their
+// upcoming salary) so it can be deducted from that month's payable total
+// instead of being paid out twice.
+export async function recordTutorAdvance(
+  tutorId: string,
+  month: string,
+  _prevState: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  const session = await requireOwner();
+  const supabase = await createClient();
+
+  const amount = Number(formData.get("amount"));
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return { error: "Enter a valid amount." };
+  }
+
+  const reason = String(formData.get("reason") || "").trim();
+  if (!reason) {
+    return { error: "Enter a reason for the advance." };
+  }
+
+  const { error } = await supabase.from("tutor_advances").insert({
+    institute_id: session.instituteId,
+    tutor_id: tutorId,
+    month,
+    amount,
+    reason,
+    recorded_by: session.userId,
+  });
+
+  if (error) return { error: `Could not record advance: ${error.message}` };
+
+  revalidatePath("/salaries");
+  revalidatePath(`/salaries/${tutorId}`);
+
+  return { success: true };
+}
+
+export async function deleteTutorAdvance(advanceId: string, tutorId: string): Promise<void> {
+  const session = await requireOwner();
+  const supabase = await createClient();
+
+  const { error } = await supabase
+    .from("tutor_advances")
+    .delete()
+    .eq("id", advanceId)
+    .eq("institute_id", session.instituteId);
+
+  if (error) throw new Error(`Could not remove advance: ${error.message}`);
+
+  revalidatePath("/salaries");
+  revalidatePath(`/salaries/${tutorId}`);
+}

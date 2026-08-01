@@ -1,10 +1,11 @@
 import { notFound, redirect } from "next/navigation";
 import { getSessionInfo } from "@/lib/auth/session";
 import { getTutorSalary } from "@/lib/salaries/queries";
-import { markSalaryPaid } from "@/lib/salaries/actions";
+import { markSalaryPaid, deleteTutorAdvance } from "@/lib/salaries/actions";
 import { currentMonthInColombo } from "@/lib/time";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/card";
+import { RecordAdvanceForm } from "./record-advance-form";
 
 export default async function TutorSalaryPage({
   params,
@@ -86,17 +87,58 @@ export default async function TutorSalaryPage({
           )}
         </ul>
 
-        <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-          <p className="font-medium text-gray-900">Total: LKR {salary.total.toFixed(2)}</p>
-          {salary.status !== "paid" && session.role === "owner" && (
-            <form action={markSalaryPaid.bind(null, salary.tutorId, month, salary.total)}>
-              <button type="submit" className="text-sm font-medium text-indigo-600">
-                Mark as paid
-              </button>
-            </form>
+        {salary.advances.length > 0 && (
+          <div className="mt-3 flex flex-col gap-2 border-t border-gray-100 pt-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Advances taken</p>
+            {salary.advances.map((advance) => (
+              <div key={advance.id} className="flex items-center justify-between gap-3 text-sm">
+                <div>
+                  <p className="text-gray-900">{advance.reason}</p>
+                  <p className="text-gray-500">
+                    {new Date(advance.recordedAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                    })}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <span className="font-medium text-red-700">− LKR {advance.amount.toFixed(2)}</span>
+                  {session.role === "owner" && (
+                    <form action={deleteTutorAdvance.bind(null, advance.id, salary.tutorId)}>
+                      <button type="submit" className="text-xs font-medium text-gray-400 hover:text-gray-600">
+                        Remove
+                      </button>
+                    </form>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-3 flex flex-col gap-1 border-t border-gray-100 pt-3">
+          {salary.advancesTotal > 0 && (
+            <div className="flex justify-between text-sm text-gray-500">
+              <span>Gross total</span>
+              <span>LKR {salary.total.toFixed(2)}</span>
+            </div>
           )}
+          <div className="flex items-center justify-between">
+            <p className="font-medium text-gray-900">
+              {salary.advancesTotal > 0 ? "Payable (after advances)" : "Total"}: LKR {salary.netTotal.toFixed(2)}
+            </p>
+            {salary.status !== "paid" && session.role === "owner" && (
+              <form action={markSalaryPaid.bind(null, salary.tutorId, month, salary.netTotal)}>
+                <button type="submit" className="text-sm font-medium text-indigo-600">
+                  Mark as paid
+                </button>
+              </form>
+            )}
+          </div>
         </div>
       </Card>
+
+      {session.role === "owner" && <RecordAdvanceForm tutorId={salary.tutorId} month={month} />}
     </PageShell>
   );
 }

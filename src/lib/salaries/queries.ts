@@ -5,11 +5,23 @@ import { calculateClassSalary, type ClassSalaryBreakdown } from "./calculate";
 import { subjectNamesById } from "@/lib/subjects/queries";
 import type { PaymentMethod, SalaryStatus } from "@/lib/supabase/types";
 
+export interface TutorAdvanceRow {
+  id: string;
+  amount: number;
+  reason: string;
+  recordedAt: string;
+}
+
 export interface TutorSalary {
   tutorId: string;
   tutorName: string;
   classes: ClassSalaryBreakdown[];
   total: number;
+  advances: TutorAdvanceRow[];
+  advancesTotal: number;
+  // What's actually payable this month — total minus advances already
+  // taken, never below zero (an advance can't turn into money owed back).
+  netTotal: number;
   status: SalaryStatus;
   paidAmount: number | null;
 }
@@ -41,7 +53,7 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
 
   const tutorIds = tutorLinks.map((t) => t.tutor_id);
 
-  const [{ data: tutors }, { data: classes }, { data: salaryPayments }] = await Promise.all([
+  const [{ data: tutors }, { data: classes }, { data: salaryPayments }, { data: advances }] = await Promise.all([
     supabase.from("users").select("id, name").in("id", tutorIds),
     supabase
       .from("classes")
@@ -53,6 +65,12 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
       .select("tutor_id, amount, status")
       .eq("institute_id", session.instituteId)
       .eq("month", month),
+    supabase
+      .from("tutor_advances")
+      .select("id, tutor_id, amount, reason, recorded_at")
+      .eq("institute_id", session.instituteId)
+      .eq("month", month)
+      .in("tutor_id", tutorIds),
   ]);
 
   const subjectNames = await subjectNamesById(
@@ -62,6 +80,13 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
 
   const nameById = new Map((tutors ?? []).map((t) => [t.id, t.name]));
   const salaryByTutor = new Map((salaryPayments ?? []).map((s) => [s.tutor_id, s]));
+
+  const advancesByTutor = new Map<string, TutorAdvanceRow[]>();
+  for (const a of advances ?? []) {
+    const list = advancesByTutor.get(a.tutor_id) ?? [];
+    list.push({ id: a.id, amount: a.amount, reason: a.reason, recordedAt: a.recorded_at });
+    advancesByTutor.set(a.tutor_id, list);
+  }
 
   // Tutors are independent of each other — compute all of them
   // concurrently instead of one at a time.
@@ -75,12 +100,17 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
       );
       const total = breakdown.reduce((sum, b) => sum + b.amount, 0);
       const salary = salaryByTutor.get(tutorId);
+      const tutorAdvances = advancesByTutor.get(tutorId) ?? [];
+      const advancesTotal = tutorAdvances.reduce((sum, a) => sum + a.amount, 0);
 
       return {
         tutorId,
         tutorName: nameById.get(tutorId) ?? "Unknown",
         classes: breakdown,
         total,
+        advances: tutorAdvances,
+        advancesTotal,
+        netTotal: Math.max(0, total - advancesTotal),
         status: salary?.status ?? "pending",
         paidAmount: salary?.amount ?? null,
       };

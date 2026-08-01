@@ -39,7 +39,7 @@ export function SalaryList({ salaries, month }: { salaries: TutorSalary[]; month
                 <p className="text-sm text-gray-500">{s.classes.length} class(es)</p>
               </div>
               <div className="flex shrink-0 items-center gap-3">
-                <p className="font-medium text-gray-900">LKR {s.total.toFixed(2)}</p>
+                <p className="font-medium text-gray-900">LKR {s.netTotal.toFixed(2)}</p>
                 <span
                   className={`rounded-full px-2.5 py-1 text-xs font-medium ${
                     s.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"

@@ -322,6 +322,30 @@ export interface Database {
         Update: Partial<Database["public"]["Tables"]["salary_payments"]["Insert"]>;
         Relationships: [];
       };
+      tutor_advances: {
+        Row: {
+          id: string;
+          institute_id: string;
+          tutor_id: string;
+          month: string;
+          amount: number;
+          reason: string;
+          recorded_by: string;
+          recorded_at: string;
+        };
+        Insert: {
+          id?: string;
+          institute_id: string;
+          tutor_id: string;
+          month: string;
+          amount: number;
+          reason: string;
+          recorded_by: string;
+          recorded_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["tutor_advances"]["Insert"]>;
+        Relationships: [];
+      };
       wallet_transactions: {
         Row: {
           id: string;
