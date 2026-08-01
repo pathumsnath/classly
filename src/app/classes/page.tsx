@@ -2,9 +2,7 @@ import { listClasses } from "@/lib/classes/queries";
 import { listTutors } from "@/lib/people/queries";
 import { listSubjects } from "@/lib/subjects/queries";
 import { PageShell } from "@/components/page-shell";
-import { EmptyState } from "@/components/card";
-import { CreateClassForm } from "./create-class-form";
-import { ClassList } from "./class-list";
+import { ClassesTabs } from "./classes-tabs";
 
 export default async function ClassesPage() {
   const [classes, tutors, subjects] = await Promise.all([listClasses(), listTutors(), listSubjects()]);
@@ -13,15 +11,7 @@ export default async function ClassesPage() {
 
   return (
     <PageShell title="Classes">
-      <ClassList classes={classes} />
-
-      {activeTutors.length === 0 ? (
-        <EmptyState message="Add a tutor first — a class needs one assigned." />
-      ) : activeSubjects.length === 0 ? (
-        <EmptyState message="Add a subject first — a class needs one assigned." />
-      ) : (
-        <CreateClassForm tutors={activeTutors} subjects={activeSubjects} />
-      )}
+      <ClassesTabs classes={classes} activeTutors={activeTutors} activeSubjects={activeSubjects} />
     </PageShell>
   );
 }
