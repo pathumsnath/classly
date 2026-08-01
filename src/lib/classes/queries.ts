@@ -83,6 +83,41 @@ export async function listClasses(): Promise<ClassRow[]> {
   }));
 }
 
+export async function listClassesForTutor(tutorId: string): Promise<ClassRow[]> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: classes } = await supabase
+    .from("classes")
+    .select(
+      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type",
+    )
+    .eq("institute_id", session.instituteId)
+    .eq("tutor_id", tutorId)
+    .order("created_at", { ascending: true });
+
+  if (!classes || classes.length === 0) return [];
+
+  const subjectNames = await subjectNamesById(
+    supabase,
+    classes.map((c) => c.subject_id),
+  );
+  const tutorNames = await tutorNamesById(supabase, [tutorId]);
+
+  return classes.map((c) => ({
+    id: c.id,
+    subject: subjectNames.get(c.subject_id) ?? "Unknown",
+    grade: c.grade,
+    medium: c.medium,
+    tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
+    scheduleDays: c.schedule_days,
+    scheduleStartTime: c.schedule_start_time,
+    scheduleEndTime: c.schedule_end_time,
+    feeAmount: c.fee_amount,
+    feeType: c.fee_type,
+  }));
+}
+
 export async function getClass(classId: string): Promise<ClassDetail | null> {
   const session = await requireSession();
   const supabase = await createClient();

@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireOwner } from "@/lib/auth/require-owner";
 import { calculateClassSalary, type ClassSalaryBreakdown } from "./calculate";
 import { subjectNamesById } from "@/lib/subjects/queries";
-import type { SalaryStatus } from "@/lib/supabase/types";
+import type { PaymentMethod, SalaryStatus } from "@/lib/supabase/types";
 
 export interface TutorSalary {
   tutorId: string;
@@ -88,4 +88,36 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
 export async function getTutorSalary(tutorId: string, month: string): Promise<TutorSalary | null> {
   const salaries = await getTutorSalaries(month, [tutorId]);
   return salaries[0] ?? null;
+}
+
+export interface SalaryPaymentRow {
+  id: string;
+  month: string;
+  amount: number;
+  status: SalaryStatus;
+  method: PaymentMethod | null;
+  paidDate: string | null;
+}
+
+// Every recorded salary payout for this tutor, most recent month first —
+// owner-only, same as the rest of this domain (see plan).
+export async function listSalaryPaymentsForTutor(tutorId: string): Promise<SalaryPaymentRow[]> {
+  const session = await requireOwner();
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("salary_payments")
+    .select("id, month, amount, status, method, paid_date")
+    .eq("institute_id", session.instituteId)
+    .eq("tutor_id", tutorId)
+    .order("month", { ascending: false });
+
+  return (data ?? []).map((s) => ({
+    id: s.id,
+    month: s.month,
+    amount: s.amount,
+    status: s.status,
+    method: s.method,
+    paidDate: s.paid_date,
+  }));
 }

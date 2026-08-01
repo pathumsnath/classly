@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Search, GraduationCap } from "lucide-react";
 import { setTutorStatus } from "@/lib/people/actions";
 import { Card, EmptyState, Avatar } from "@/components/card";
@@ -34,11 +35,13 @@ export function TutorList({ tutors }: { tutors: TutorRow[] }) {
         <Card className="divide-y divide-gray-100">
           {visibleTutors.map((tutor) => (
             <div key={tutor.id} className="flex items-center gap-3 p-4">
-              <Avatar name={tutor.name} />
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{tutor.name}</p>
-                <p className="text-sm text-gray-500">{tutor.phone}</p>
-              </div>
+              <Link href={`/people/tutors/${tutor.id}`} className="flex flex-1 items-center gap-3">
+                <Avatar name={tutor.name} />
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">{tutor.name}</p>
+                  <p className="text-sm text-gray-500">{tutor.phone}</p>
+                </div>
+              </Link>
               <form action={setTutorStatus.bind(null, tutor.id, tutor.status === "active" ? "inactive" : "active")}>
                 <button type="submit" className="text-sm font-medium text-indigo-600">
                   {tutor.status === "active" ? "Deactivate" : "Reactivate"}
