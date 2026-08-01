@@ -65,6 +65,14 @@ export default async function TutorSalaryPage({
                   <span>Monthly salary</span>
                   <span>LKR {c.amount.toFixed(2)}</span>
                 </div>
+                {c.outstandingFees !== null && c.outstandingFees > 0 && (
+                  <div className="flex justify-between pl-3 text-amber-700">
+                    <span>Outstanding (unpaid) — your cut if collected</span>
+                    <span>
+                      LKR {c.outstandingFees.toFixed(2)} → LKR {((c.outstandingFees * c.value) / 100).toFixed(2)}
+                    </span>
+                  </div>
+                )}
               </li>
             ) : (
               <li key={c.classId} className="flex justify-between">
