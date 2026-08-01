@@ -194,3 +194,35 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
 
   return { classId, subject, date, isCancelled: !!cancellation, students: rows };
 }
+
+export interface AttendanceRecordRow {
+  id: string;
+  date: string;
+  status: AttendanceStatus;
+}
+
+export async function listAttendanceForStudentInClass(
+  studentId: string,
+  classId: string,
+): Promise<AttendanceRecordRow[]> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: enrollment } = await supabase
+    .from("enrollments")
+    .select("id")
+    .eq("student_id", studentId)
+    .eq("class_id", classId)
+    .eq("institute_id", session.instituteId)
+    .maybeSingle();
+
+  if (!enrollment) return [];
+
+  const { data: attendance } = await supabase
+    .from("attendance")
+    .select("id, date, status")
+    .eq("enrollment_id", enrollment.id)
+    .order("date", { ascending: false });
+
+  return attendance ?? [];
+}
