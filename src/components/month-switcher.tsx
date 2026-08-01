@@ -7,6 +7,12 @@ export function prevMonth(month: string): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
+function formatMonthLabel(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
 export function MonthSwitcher({
   basePath,
   month,
@@ -25,7 +31,7 @@ export function MonthSwitcher({
       >
         <ChevronLeft className="h-4 w-4" />
       </Link>
-      <span className="font-medium text-gray-900">{month.slice(0, 7)}</span>
+      <span className="font-medium text-gray-900">{formatMonthLabel(month)}</span>
       {month !== currentMonth && (
         <Link href={`${basePath}?month=${currentMonth}`} className="text-xs font-medium text-indigo-600">
           This month
