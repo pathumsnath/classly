@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
-import { CheckCircle2, XCircle, Clock, CheckCheck, MessageSquare } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, CheckCheck, MessageSquare, Search } from "lucide-react";
 import { submitAttendance, sendAbsenceAlerts, markClassCancelled } from "@/lib/attendance/actions";
 import { FormError, SubmitButton } from "@/components/form";
 import { Card, Avatar } from "@/components/card";
@@ -89,6 +89,12 @@ export function AttendanceForm({
     payments: OutstandingPayment[];
     walletBalance: number;
   } | null>(null);
+  const [query, setQuery] = useState("");
+
+  // Sorted so scanning the roster (or a search result) is predictable —
+  // a tutor taking roll call by ear needs to find a called-out name fast.
+  const sortedStudents = [...students].sort((a, b) => a.name.localeCompare(b.name));
+  const visibleStudents = sortedStudents.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase()));
 
   function markAllPresent() {
     setStatuses(Object.fromEntries(students.map((s) => [s.enrollmentId, "present"])));
@@ -119,59 +125,83 @@ export function AttendanceForm({
         <input type="hidden" name="classId" value={classId} />
         <input type="hidden" name="date" value={date} />
 
-        <button
-          type="button"
-          onClick={markAllPresent}
-          className="flex w-fit items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
-        >
-          <CheckCheck className="h-4 w-4" />
-          Mark all present
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={markAllPresent}
+            className="flex w-fit shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+          >
+            <CheckCheck className="h-4 w-4" />
+            Mark all present
+          </button>
 
-        <Card className="divide-y divide-gray-100">
-          {students.map((student) => {
-            const status = statuses[student.enrollmentId];
-            const StatusIcon = STATUS_ICONS[status];
-            return (
-              <div key={student.enrollmentId} className="flex flex-col gap-2 p-4">
-                <input type="hidden" name="enrollmentId" value={student.enrollmentId} readOnly />
-                <input type="hidden" name={`status_${student.enrollmentId}`} value={status} readOnly />
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Find a student…"
+              className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+            />
+          </div>
+        </div>
 
-                <div className="flex items-center gap-3">
-                  <Avatar name={student.name} />
-                  <p className="flex-1 font-medium text-gray-900">{student.name}</p>
+        {/* Hidden inputs stay for every student regardless of the search
+            filter above — attendance for a filtered-out student still
+            needs to submit with the rest of the roster. */}
+        {sortedStudents.map((student) => (
+          <div key={student.enrollmentId}>
+            <input type="hidden" name="enrollmentId" value={student.enrollmentId} readOnly />
+            <input type="hidden" name={`status_${student.enrollmentId}`} value={statuses[student.enrollmentId]} readOnly />
+          </div>
+        ))}
+
+        {visibleStudents.length === 0 ? (
+          <p className="px-1 text-sm text-gray-500">No students match &ldquo;{query}&rdquo;.</p>
+        ) : (
+          <Card className="divide-y divide-gray-100">
+            {visibleStudents.map((student) => {
+              const status = statuses[student.enrollmentId];
+              const StatusIcon = STATUS_ICONS[status];
+              return (
+                <div key={student.enrollmentId} className="flex flex-col gap-2 p-4">
+                  <div className="flex items-center gap-3">
+                    <Avatar name={student.name} />
+                    <p className="flex-1 font-medium text-gray-900">{student.name}</p>
+                  </div>
+
+                  <div className="flex items-center gap-2 pl-12">
+                    <button
+                      type="button"
+                      onClick={() => toggle(student.enrollmentId)}
+                      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${STATUS_STYLES[status]}`}
+                    >
+                      <StatusIcon className="h-3.5 w-3.5" />
+                      {status}
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={student.outstandingPayments.length === 0}
+                      onClick={() =>
+                        student.outstandingPayments.length > 0 &&
+                        setOpenPayment({
+                          studentName: student.name,
+                          payments: student.outstandingPayments,
+                          walletBalance: student.walletBalance,
+                        })
+                      }
+                      className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}
+                    >
+                      {feeBadgeLabel(student)}
+                    </button>
+                  </div>
                 </div>
-
-                <div className="flex items-center gap-2 pl-12">
-                  <button
-                    type="button"
-                    onClick={() => toggle(student.enrollmentId)}
-                    className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${STATUS_STYLES[status]}`}
-                  >
-                    <StatusIcon className="h-3.5 w-3.5" />
-                    {status}
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={student.outstandingPayments.length === 0}
-                    onClick={() =>
-                      student.outstandingPayments.length > 0 &&
-                      setOpenPayment({
-                        studentName: student.name,
-                        payments: student.outstandingPayments,
-                        walletBalance: student.walletBalance,
-                      })
-                    }
-                    className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}
-                  >
-                    {feeBadgeLabel(student)}
-                  </button>
-                </div>
-              </div>
-            );
-          })}
-        </Card>
+              );
+            })}
+          </Card>
+        )}
 
         <FormError message={state.error} />
       </form>
