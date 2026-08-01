@@ -203,6 +203,138 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
   return { classId, subject, date, isCancelled: !!cancellation, students: rows };
 }
 
+export interface MonthlyAttendanceStudentRow {
+  studentId: string;
+  name: string;
+  hasFeeRecords: boolean;
+  feeBalance: number;
+  feeIsOverdue: boolean;
+  // Keyed by date (YYYY-MM-DD); missing/null means no record for that
+  // session yet (e.g. not marked, or in the future).
+  statusByDate: Record<string, AttendanceStatus | null>;
+}
+
+export interface ClassMonthlyAttendance {
+  classId: string;
+  subject: string;
+  month: string;
+  // This class's own session dates within the month (from schedule_days),
+  // excluding any that were cancelled — the grid's columns.
+  sessionDates: string[];
+  students: MonthlyAttendanceStudentRow[];
+}
+
+// Tutor read-only view — a whole month's attendance for a class at once
+// instead of paging day by day, since a tutor is reviewing history rather
+// than marking it live.
+export async function getClassAttendanceForMonth(classId: string, month: string): Promise<ClassMonthlyAttendance | null> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: cls } = await supabase
+    .from("classes")
+    .select("id, subject_id, tutor_id, schedule_days")
+    .eq("id", classId)
+    .eq("institute_id", session.instituteId)
+    .maybeSingle();
+
+  if (!cls) return null;
+  if (session.role === "tutor" && cls.tutor_id !== session.userId) return null;
+
+  const subjectNames = await subjectNamesById(supabase, [cls.subject_id]);
+  const subject = subjectNames.get(cls.subject_id) ?? "Unknown";
+
+  const [year, mon] = month.split("-").map(Number);
+  const daysInMonth = new Date(Date.UTC(year, mon, 0)).getUTCDate();
+  const allDatesInMonth: string[] = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const d = new Date(Date.UTC(year, mon - 1, day));
+    if (cls.schedule_days.includes(WEEKDAY_NAMES[d.getUTCDay()])) {
+      allDatesInMonth.push(d.toISOString().slice(0, 10));
+    }
+  }
+
+  const { data: cancellations } = await supabase
+    .from("class_cancellations")
+    .select("date")
+    .eq("class_id", classId)
+    .in("date", allDatesInMonth);
+  const cancelledDates = new Set((cancellations ?? []).map((c) => c.date));
+  const sessionDates = allDatesInMonth.filter((d) => !cancelledDates.has(d));
+
+  const { data: enrollments } = await supabase
+    .from("enrollments")
+    .select("id, student_id")
+    .eq("class_id", classId)
+    .eq("status", "active");
+
+  if (!enrollments || enrollments.length === 0) {
+    return { classId, subject, month, sessionDates, students: [] };
+  }
+
+  const studentIds = enrollments.map((e) => e.student_id);
+  const currentMonth = currentMonthInColombo();
+
+  const [{ data: students }, { data: attendanceRows }, { data: payments }] = await Promise.all([
+    supabase.from("users").select("id, name").in("id", studentIds),
+    supabase
+      .from("attendance")
+      .select("enrollment_id, date, status")
+      .eq("class_id", classId)
+      .in("date", sessionDates),
+    supabase
+      .from("payments")
+      .select("student_id, status, balance, month")
+      .eq("class_id", classId)
+      .in("student_id", studentIds),
+  ]);
+
+  const nameById = new Map((students ?? []).map((s) => [s.id, s.name]));
+  const studentByEnrollment = new Map(enrollments.map((e) => [e.id, e.student_id]));
+
+  const statusByStudentDate = new Map<string, Record<string, AttendanceStatus>>();
+  for (const a of attendanceRows ?? []) {
+    const studentId = studentByEnrollment.get(a.enrollment_id);
+    if (!studentId) continue;
+    const rec = statusByStudentDate.get(studentId) ?? {};
+    rec[a.date] = a.status;
+    statusByStudentDate.set(studentId, rec);
+  }
+
+  interface PaymentRow {
+    student_id: string;
+    status: "pending" | "partial" | "paid" | "overdue" | "waived";
+    balance: number;
+    month: string;
+  }
+  const paymentsByStudent = new Map<string, PaymentRow[]>();
+  for (const p of (payments ?? []) as PaymentRow[]) {
+    const list = paymentsByStudent.get(p.student_id) ?? [];
+    list.push(p);
+    paymentsByStudent.set(p.student_id, list);
+  }
+
+  const rows: MonthlyAttendanceStudentRow[] = enrollments.map((e) => {
+    const studentPayments = paymentsByStudent.get(e.student_id) ?? [];
+    const outstanding = studentPayments.filter((p) => p.status === "pending" || p.status === "partial");
+    const byDate = statusByStudentDate.get(e.student_id) ?? {};
+
+    const statusByDate: Record<string, AttendanceStatus | null> = {};
+    for (const date of sessionDates) statusByDate[date] = byDate[date] ?? null;
+
+    return {
+      studentId: e.student_id,
+      name: nameById.get(e.student_id) ?? "Unknown",
+      hasFeeRecords: studentPayments.length > 0,
+      feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
+      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth)),
+      statusByDate,
+    };
+  });
+
+  return { classId, subject, month, sessionDates, students: rows };
+}
+
 export interface AttendanceRecordRow {
   id: string;
   date: string;
