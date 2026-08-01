@@ -13,3 +13,11 @@ export function todayInColombo(): string {
 export function currentMonthInColombo(): string {
   return `${todayInColombo().slice(0, 7)}-01`;
 }
+
+// Calendar-week bucket within the month (1-7 -> 1, 8-14 -> 2, ...), not a
+// count of "which Nth Monday" — so a class meeting twice a week shows the
+// same week number for both sessions in the same calendar week.
+export function weekOfMonth(date: string): number {
+  const day = Number(date.slice(8, 10));
+  return Math.ceil(day / 7);
+}

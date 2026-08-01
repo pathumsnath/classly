@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronLeft, ChevronRight, Users, CalendarOff } from "lucide-react";
 import { getClassAttendanceState, todayInColombo } from "@/lib/attendance/queries";
+import { weekOfMonth } from "@/lib/time";
 import { undoCancelClass } from "@/lib/attendance/actions";
 import { PageShell } from "@/components/page-shell";
 import { EmptyState } from "@/components/card";
@@ -38,6 +39,9 @@ export default async function AttendancePage({
           <ChevronLeft className="h-4 w-4" />
         </Link>
         <span className="font-medium text-gray-900">{date}</span>
+        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
+          Week {weekOfMonth(date)}
+        </span>
         <Link
           href={`/attendance/${classId}?date=${addDays(date, 1)}`}
           aria-label="Next day"
