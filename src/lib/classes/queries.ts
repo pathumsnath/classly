@@ -17,6 +17,10 @@ export interface ClassRow {
   feeType: FeeType;
 }
 
+export interface ClassListRow extends ClassRow {
+  studentCount: number;
+}
+
 export interface ClassDetail extends ClassRow {
   tutorId: string;
   subjectId: string;
@@ -44,7 +48,22 @@ async function tutorNamesById(supabase: Awaited<ReturnType<typeof createClient>>
   return new Map((data ?? []).map((t) => [t.id, t.name]));
 }
 
-export async function listClasses(): Promise<ClassRow[]> {
+async function studentCountsByClassId(supabase: Awaited<ReturnType<typeof createClient>>, classIds: string[]) {
+  if (classIds.length === 0) return new Map<string, number>();
+  const { data } = await supabase
+    .from("enrollments")
+    .select("class_id")
+    .eq("status", "active")
+    .in("class_id", classIds);
+
+  const counts = new Map<string, number>();
+  for (const e of data ?? []) {
+    counts.set(e.class_id, (counts.get(e.class_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
+export async function listClasses(): Promise<ClassListRow[]> {
   const session = await requireSession();
   const supabase = await createClient();
 
@@ -58,7 +77,7 @@ export async function listClasses(): Promise<ClassRow[]> {
 
   if (!classes || classes.length === 0) return [];
 
-  const [tutorNames, subjectNames] = await Promise.all([
+  const [tutorNames, subjectNames, studentCounts] = await Promise.all([
     tutorNamesById(
       supabase,
       classes.map((c) => c.tutor_id),
@@ -66,6 +85,10 @@ export async function listClasses(): Promise<ClassRow[]> {
     subjectNamesById(
       supabase,
       classes.map((c) => c.subject_id),
+    ),
+    studentCountsByClassId(
+      supabase,
+      classes.map((c) => c.id),
     ),
   ]);
 
@@ -80,6 +103,7 @@ export async function listClasses(): Promise<ClassRow[]> {
     scheduleEndTime: c.schedule_end_time,
     feeAmount: c.fee_amount,
     feeType: c.fee_type,
+    studentCount: studentCounts.get(c.id) ?? 0,
   }));
 }
 

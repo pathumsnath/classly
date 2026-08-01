@@ -4,7 +4,7 @@ import { useState } from "react";
 import { EmptyState } from "@/components/card";
 import { ClassList } from "./class-list";
 import { CreateClassForm } from "./create-class-form";
-import type { ClassRow } from "@/lib/classes/queries";
+import type { ClassListRow } from "@/lib/classes/queries";
 import type { TutorRow } from "@/lib/people/queries";
 import type { SubjectRow } from "@/lib/subjects/queries";
 
@@ -15,7 +15,7 @@ export function ClassesTabs({
   activeTutors,
   activeSubjects,
 }: {
-  classes: ClassRow[];
+  classes: ClassListRow[];
   activeTutors: TutorRow[];
   activeSubjects: SubjectRow[];
 }) {
