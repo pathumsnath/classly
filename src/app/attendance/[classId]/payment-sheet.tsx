@@ -5,17 +5,19 @@ import { useRouter } from "next/navigation";
 import { X } from "lucide-react";
 import { recordPayment } from "@/lib/fees/actions";
 import { Field, FormError, Select, SubmitButton } from "@/components/form";
+import type { OutstandingPayment } from "@/lib/attendance/queries";
 
 // FR-5.6 — record a payment inline, without leaving attendance. Reuses
-// the same recordPayment action as the full /fees/[studentId] page; this
-// is just a scoped, one-payment view of it.
+// the same recordPayment action as /fees/[studentId], scoped to just
+// this one class's outstanding months — checkboxes so a student behind
+// on 2-3 months can be settled in one submit instead of one at a time.
 export function PaymentSheet({
-  paymentId,
-  balance,
+  studentName,
+  payments,
   onClose,
 }: {
-  paymentId: string;
-  balance: number;
+  studentName: string;
+  payments: OutstandingPayment[];
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -34,7 +36,7 @@ export function PaymentSheet({
       <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200 sm:hidden" />
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Record payment</h3>
+          <h3 className="font-semibold text-gray-900">Record payment — {studentName}</h3>
           <button
             type="button"
             onClick={onClose}
@@ -46,16 +48,29 @@ export function PaymentSheet({
         </div>
 
         <form action={formAction} className="flex flex-col gap-4">
-          <input type="hidden" name="paymentId" value={paymentId} />
+          <div className="flex flex-col gap-3">
+            {payments.map((p) => (
+              <label key={p.id} className="flex items-center gap-3 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  name="paymentId"
+                  value={p.id}
+                  defaultChecked
+                  className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="flex-1">{p.month.slice(0, 7)}</span>
+                <input
+                  type="number"
+                  name={`amount_${p.id}`}
+                  defaultValue={p.balance}
+                  min={0}
+                  step="0.01"
+                  className="w-24 rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-right text-sm text-gray-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+                />
+              </label>
+            ))}
+          </div>
 
-          <Field
-            label="Amount (LKR)"
-            name={`amount_${paymentId}`}
-            type="number"
-            defaultValue={balance}
-            min={0}
-            step="0.01"
-          />
           <Select label="Method" name="method" required defaultValue="cash">
             <option value="cash">Cash</option>
             <option value="bank_transfer">Bank transfer</option>

@@ -6,7 +6,7 @@ import { submitAttendance, sendAbsenceAlerts, markClassCancelled } from "@/lib/a
 import { FormError, SubmitButton } from "@/components/form";
 import { Card, Avatar } from "@/components/card";
 import type { AttendanceStatus } from "@/lib/supabase/types";
-import type { AttendanceStudentRow } from "@/lib/attendance/queries";
+import type { AttendanceStudentRow, OutstandingPayment } from "@/lib/attendance/queries";
 import { PaymentSheet } from "./payment-sheet";
 
 const CYCLE: Record<AttendanceStatus, AttendanceStatus> = {
@@ -25,11 +25,20 @@ const STATUS_STYLES: Record<AttendanceStatus, string> = {
 
 const ATTENDANCE_FORM_ID = "attendance-submit-form";
 
-function feeBadgeClass(status: string | null) {
-  if (!status || status === "waived") return "bg-gray-100 text-gray-500";
-  if (status === "paid") return "bg-green-100 text-green-700";
-  if (status === "partial") return "bg-yellow-100 text-yellow-700";
-  return "bg-red-100 text-red-700"; // pending/overdue
+// Fee badge reflects only this class's own outstanding balance, summed
+// across every month owed for it — not other classes the student is in.
+function feeBadgeClass(student: AttendanceStudentRow) {
+  if (!student.hasFeeRecords || student.feeBalance <= 0) {
+    return student.hasFeeRecords ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500";
+  }
+  return student.feeIsOverdue ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700";
+}
+
+function feeBadgeLabel(student: AttendanceStudentRow) {
+  if (!student.hasFeeRecords) return "No fee";
+  if (student.feeBalance <= 0) return "Paid";
+  const amount = `LKR ${student.feeBalance.toLocaleString()}`;
+  return student.feeIsOverdue ? `${amount} overdue` : `${amount} due`;
 }
 
 function AbsenceAlertPanel({ classId, date, absentCount }: { classId: string; date: string; absentCount: number }) {
@@ -75,7 +84,9 @@ export function AttendanceForm({
     Object.fromEntries(students.map((s) => [s.enrollmentId, s.status ?? "present"])),
   );
   const [state, formAction, pending] = useActionState(submitAttendance, {});
-  const [openPayment, setOpenPayment] = useState<{ paymentId: string; balance: number } | null>(null);
+  const [openPayment, setOpenPayment] = useState<{ studentName: string; payments: OutstandingPayment[] } | null>(
+    null,
+  );
 
   function markAllPresent() {
     setStatuses(Object.fromEntries(students.map((s) => [s.enrollmentId, "present"])));
@@ -138,14 +149,14 @@ export function AttendanceForm({
 
                 <button
                   type="button"
-                  disabled={!student.feePaymentId}
+                  disabled={student.outstandingPayments.length === 0}
                   onClick={() =>
-                    student.feePaymentId &&
-                    setOpenPayment({ paymentId: student.feePaymentId, balance: student.feeBalance ?? 0 })
+                    student.outstandingPayments.length > 0 &&
+                    setOpenPayment({ studentName: student.name, payments: student.outstandingPayments })
                   }
-                  className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student.feeStatus)}`}
+                  className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}
                 >
-                  {student.feeStatus ?? "no fee"}
+                  {feeBadgeLabel(student)}
                 </button>
               </div>
             );
@@ -175,8 +186,8 @@ export function AttendanceForm({
 
       {openPayment && (
         <PaymentSheet
-          paymentId={openPayment.paymentId}
-          balance={openPayment.balance}
+          studentName={openPayment.studentName}
+          payments={openPayment.payments}
           onClose={() => setOpenPayment(null)}
         />
       )}

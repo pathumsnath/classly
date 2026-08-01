@@ -1,9 +1,10 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
-import { colomboNow, todayInColombo } from "@/lib/time";
+import { colomboNow, todayInColombo, currentMonthInColombo } from "@/lib/time";
 import { subjectNamesById } from "@/lib/subjects/queries";
-import type { AttendanceStatus, PaymentStatus } from "@/lib/supabase/types";
+import { isOverdue } from "@/lib/fees/status";
+import type { AttendanceStatus } from "@/lib/supabase/types";
 
 export { todayInColombo };
 
@@ -74,14 +75,23 @@ export async function getTodaysClasses(): Promise<TodayClassRow[]> {
     .sort((a, b) => (a.scheduleStartTime ?? "").localeCompare(b.scheduleStartTime ?? ""));
 }
 
+export interface OutstandingPayment {
+  id: string;
+  month: string;
+  balance: number;
+}
+
 export interface AttendanceStudentRow {
   enrollmentId: string;
   studentId: string;
   name: string;
   status: AttendanceStatus | null;
-  feeStatus: PaymentStatus | null;
-  feeBalance: number | null;
-  feePaymentId: string | null;
+  // Scoped to *this* class only, summed across every month they owe for
+  // it — not other classes the student may also be enrolled in.
+  hasFeeRecords: boolean;
+  feeBalance: number;
+  feeIsOverdue: boolean;
+  outstandingPayments: OutstandingPayment[];
 }
 
 export interface ClassAttendanceState {
@@ -127,33 +137,52 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
 
   const studentIds = enrollments.map((e) => e.student_id);
   const enrollmentIds = enrollments.map((e) => e.id);
-  const month = `${date.slice(0, 7)}-01`;
+  const currentMonth = currentMonthInColombo();
 
   const [{ data: students }, { data: existingAttendance }, { data: payments }] = await Promise.all([
     supabase.from("users").select("id, name").in("id", studentIds),
     supabase.from("attendance").select("enrollment_id, status").eq("date", date).in("enrollment_id", enrollmentIds),
+    // Every payment record for this class (any month) — the fee badge
+    // shows what's owed for *this class* across all outstanding months,
+    // not just the one being viewed, and not other classes.
     supabase
       .from("payments")
-      .select("id, student_id, status, balance")
+      .select("id, student_id, status, balance, month")
       .eq("class_id", classId)
-      .eq("month", month)
       .in("student_id", studentIds),
   ]);
 
   const nameById = new Map((students ?? []).map((s) => [s.id, s.name]));
   const attendanceByEnrollment = new Map((existingAttendance ?? []).map((a) => [a.enrollment_id, a.status]));
-  const feeByStudent = new Map((payments ?? []).map((p) => [p.student_id, p]));
+
+  interface PaymentRow {
+    id: string;
+    student_id: string;
+    status: "pending" | "partial" | "paid" | "overdue" | "waived";
+    balance: number;
+    month: string;
+  }
+
+  const paymentsByStudent = new Map<string, PaymentRow[]>();
+  for (const p of (payments ?? []) as PaymentRow[]) {
+    const list = paymentsByStudent.get(p.student_id) ?? [];
+    list.push(p);
+    paymentsByStudent.set(p.student_id, list);
+  }
 
   const rows: AttendanceStudentRow[] = enrollments.map((e) => {
-    const fee = feeByStudent.get(e.student_id);
+    const studentPayments = paymentsByStudent.get(e.student_id) ?? [];
+    const outstanding = studentPayments.filter((p) => p.status === "pending" || p.status === "partial");
+
     return {
       enrollmentId: e.id,
       studentId: e.student_id,
       name: nameById.get(e.student_id) ?? "Unknown",
       status: attendanceByEnrollment.get(e.id) ?? null,
-      feeStatus: fee?.status ?? null,
-      feeBalance: fee?.balance ?? null,
-      feePaymentId: fee?.id ?? null,
+      hasFeeRecords: studentPayments.length > 0,
+      feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
+      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth)),
+      outstandingPayments: outstanding.map((p) => ({ id: p.id, month: p.month, balance: p.balance })),
     };
   });
 
