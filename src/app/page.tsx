@@ -1,41 +1,17 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import {
-  GraduationCap,
-  Users,
-  BookOpen,
-  Library,
-  Receipt,
-  Wallet,
-  TrendingUp,
-  UserPlus,
-  LogOut,
-  Plus,
-} from "lucide-react";
+import { LogOut, Plus } from "lucide-react";
 import { getSessionInfo } from "@/lib/auth/session";
 import { isOnboardingComplete } from "@/lib/onboarding/queries";
 import { getTodaysClasses } from "@/lib/attendance/queries";
 import { logout } from "@/lib/auth/actions";
+import { NAV_ITEMS, OWNER_NAV_ITEMS } from "@/lib/nav-items";
 
 const BUCKET_STYLES: Record<string, { dot: string; pill: string }> = {
   now: { dot: "bg-green-500", pill: "bg-green-50 text-green-700" },
   upcoming: { dot: "bg-gray-300", pill: "bg-gray-100 text-gray-600" },
   done: { dot: "bg-gray-200", pill: "bg-gray-50 text-gray-400" },
 };
-
-const NAV_ITEMS = [
-  { href: "/people/tutors", label: "Tutors", Icon: GraduationCap },
-  { href: "/people/students", label: "Students", Icon: Users },
-  { href: "/subjects", label: "Subjects", Icon: Library },
-  { href: "/classes", label: "Classes", Icon: BookOpen },
-  { href: "/fees", label: "Fees", Icon: Receipt },
-] as const;
-
-const OWNER_NAV_ITEMS = [
-  { href: "/salaries", label: "Salaries", Icon: Wallet },
-  { href: "/money", label: "Money", Icon: TrendingUp },
-  { href: "/staff/invite", label: "Add staff", Icon: UserPlus },
-] as const;
 
 export default async function DashboardPage() {
   const session = await getSessionInfo();
