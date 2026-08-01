@@ -18,6 +18,7 @@ export interface FeeRow {
   amountPaid: number;
   balance: number;
   status: PaymentStatus;
+  paidDate: string | null;
   // Computed for display/sorting only — v1 never writes 'overdue' into the
   // stored status column (no scheduled job flips it), it just treats a
   // still-unpaid fee from a past month as overdue at read time.
@@ -35,6 +36,7 @@ async function toFeeRows(
     amount_paid: number;
     balance: number;
     status: PaymentStatus;
+    paid_date: string | null;
   }[],
 ): Promise<FeeRow[]> {
   if (payments.length === 0) return [];
@@ -74,6 +76,7 @@ async function toFeeRows(
       amountPaid: p.amount_paid,
       balance: p.balance,
       status: p.status,
+      paidDate: p.paid_date,
       isOverdue,
     };
   });
@@ -90,7 +93,7 @@ export async function listFees(): Promise<FeeRow[]> {
 
   const { data } = await supabase
     .from("payments")
-    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status")
+    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date")
     .eq("institute_id", session.instituteId);
 
   return toFeeRows(supabase, data ?? []);
@@ -102,7 +105,7 @@ export async function listFeesForStudent(studentId: string): Promise<FeeRow[]> {
 
   const { data } = await supabase
     .from("payments")
-    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status")
+    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date")
     .eq("institute_id", session.instituteId)
     .eq("student_id", studentId);
 
@@ -115,7 +118,7 @@ export async function listFeesForStudentInClass(studentId: string, classId: stri
 
   const { data } = await supabase
     .from("payments")
-    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status")
+    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date")
     .eq("institute_id", session.instituteId)
     .eq("student_id", studentId)
     .eq("class_id", classId);

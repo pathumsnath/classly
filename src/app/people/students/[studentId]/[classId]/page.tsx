@@ -14,6 +14,15 @@ function formatMonth(month: string) {
   });
 }
 
+function formatPaidDate(paidDate: string) {
+  return new Date(`${paidDate}T00:00:00`).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function statusBadgeClass(isOverdue: boolean, status: string) {
   if (isOverdue) return "bg-red-100 text-red-700";
   if (status === "paid") return "bg-green-100 text-green-700";
@@ -52,6 +61,9 @@ export default async function StudentClassPaymentsPage({
                 <p className="text-sm text-gray-500">
                   Due LKR {fee.amountDue} · Paid LKR {fee.amountPaid} · Balance LKR {fee.balance}
                 </p>
+                {fee.paidDate && (
+                  <p className="text-sm text-gray-400">Paid on {formatPaidDate(fee.paidDate)}</p>
+                )}
               </div>
               <span
                 className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${statusBadgeClass(fee.isOverdue, fee.status)}`}
