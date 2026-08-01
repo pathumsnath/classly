@@ -84,9 +84,11 @@ export function AttendanceForm({
     Object.fromEntries(students.map((s) => [s.enrollmentId, s.status ?? "present"])),
   );
   const [state, formAction, pending] = useActionState(submitAttendance, {});
-  const [openPayment, setOpenPayment] = useState<{ studentName: string; payments: OutstandingPayment[] } | null>(
-    null,
-  );
+  const [openPayment, setOpenPayment] = useState<{
+    studentName: string;
+    payments: OutstandingPayment[];
+    walletBalance: number;
+  } | null>(null);
 
   function markAllPresent() {
     setStatuses(Object.fromEntries(students.map((s) => [s.enrollmentId, "present"])));
@@ -152,7 +154,11 @@ export function AttendanceForm({
                   disabled={student.outstandingPayments.length === 0}
                   onClick={() =>
                     student.outstandingPayments.length > 0 &&
-                    setOpenPayment({ studentName: student.name, payments: student.outstandingPayments })
+                    setOpenPayment({
+                      studentName: student.name,
+                      payments: student.outstandingPayments,
+                      walletBalance: student.walletBalance,
+                    })
                   }
                   className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}
                 >
@@ -188,6 +194,7 @@ export function AttendanceForm({
         <PaymentSheet
           studentName={openPayment.studentName}
           payments={openPayment.payments}
+          walletBalance={openPayment.walletBalance}
           onClose={() => setOpenPayment(null)}
         />
       )}

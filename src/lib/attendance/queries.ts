@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
 import { colomboNow, todayInColombo, currentMonthInColombo } from "@/lib/time";
 import { subjectNamesById } from "@/lib/subjects/queries";
+import { getWalletBalancesByStudent } from "@/lib/wallet/queries";
 import { isOverdue } from "@/lib/fees/status";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 
@@ -92,6 +93,9 @@ export interface AttendanceStudentRow {
   feeBalance: number;
   feeIsOverdue: boolean;
   outstandingPayments: OutstandingPayment[];
+  // Spare credit at this institute, from past overpayment — usable toward
+  // any of the student's classes here, not just this one.
+  walletBalance: number;
 }
 
 export interface ClassAttendanceState {
@@ -139,7 +143,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
   const enrollmentIds = enrollments.map((e) => e.id);
   const currentMonth = currentMonthInColombo();
 
-  const [{ data: students }, { data: existingAttendance }, { data: payments }] = await Promise.all([
+  const [{ data: students }, { data: existingAttendance }, { data: payments }, walletBalances] = await Promise.all([
     supabase.from("users").select("id, name").in("id", studentIds),
     supabase.from("attendance").select("enrollment_id, status").eq("date", date).in("enrollment_id", enrollmentIds),
     // Every payment record for this class (any month) — the fee badge
@@ -150,6 +154,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
       .select("id, student_id, status, balance, month")
       .eq("class_id", classId)
       .in("student_id", studentIds),
+    getWalletBalancesByStudent(supabase, session.instituteId, studentIds),
   ]);
 
   const nameById = new Map((students ?? []).map((s) => [s.id, s.name]));
@@ -183,6 +188,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
       feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
       feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth)),
       outstandingPayments: outstanding.map((p) => ({ id: p.id, month: p.month, balance: p.balance })),
+      walletBalance: walletBalances.get(e.student_id) ?? 0,
     };
   });
 

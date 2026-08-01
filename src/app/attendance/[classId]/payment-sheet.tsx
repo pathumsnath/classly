@@ -14,10 +14,12 @@ import type { OutstandingPayment } from "@/lib/attendance/queries";
 export function PaymentSheet({
   studentName,
   payments,
+  walletBalance,
   onClose,
 }: {
   studentName: string;
   payments: OutstandingPayment[];
+  walletBalance: number;
   onClose: () => void;
 }) {
   const router = useRouter();
@@ -75,6 +77,9 @@ export function PaymentSheet({
             <option value="cash">Cash</option>
             <option value="bank_transfer">Bank transfer</option>
             <option value="other">Other</option>
+            <option value="wallet_credit" disabled={walletBalance <= 0}>
+              Wallet credit (LKR {walletBalance.toLocaleString()} available)
+            </option>
           </Select>
           <Field label="Reference (optional)" name="reference" />
           <Field
@@ -83,6 +88,11 @@ export function PaymentSheet({
             type="date"
             defaultValue={new Date().toISOString().slice(0, 10)}
           />
+
+          <div className="flex flex-col gap-1">
+            <Field label="Add extra to wallet (optional)" name="walletCredit" type="number" min={0} step="0.01" />
+            <p className="text-xs text-gray-500">Paid more than what&apos;s due? Park the rest here.</p>
+          </div>
           <label className="flex items-center gap-2 text-sm text-gray-700">
             <input
               type="checkbox"

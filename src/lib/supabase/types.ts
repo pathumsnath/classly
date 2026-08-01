@@ -10,7 +10,8 @@ export type AttendanceStatus = "present" | "absent" | "late";
 export type FeeType = "monthly_flat" | "per_session";
 export type TutorPaymentModel = "revenue_share" | "fixed" | "per_student" | "per_session";
 export type PaymentStatus = "pending" | "partial" | "paid" | "overdue" | "waived";
-export type PaymentMethod = "cash" | "bank_transfer" | "other";
+export type PaymentMethod = "cash" | "bank_transfer" | "other" | "wallet_credit";
+export type WalletTransactionType = "credit" | "debit";
 export type SalaryStatus = "pending" | "paid";
 export type NotificationType = "invite" | "receipt" | "attendance_alert";
 export type GradeLevel =
@@ -319,6 +320,32 @@ export interface Database {
           recorded_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["salary_payments"]["Insert"]>;
+        Relationships: [];
+      };
+      wallet_transactions: {
+        Row: {
+          id: string;
+          institute_id: string;
+          student_id: string;
+          amount: number;
+          type: WalletTransactionType;
+          payment_id: string | null;
+          note: string | null;
+          recorded_by: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          institute_id: string;
+          student_id: string;
+          amount: number;
+          type: WalletTransactionType;
+          payment_id?: string | null;
+          note?: string | null;
+          recorded_by: string;
+          created_at?: string;
+        };
+        Update: Partial<Database["public"]["Tables"]["wallet_transactions"]["Insert"]>;
         Relationships: [];
       };
       notifications: {

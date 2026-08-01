@@ -3,6 +3,7 @@ import { Receipt } from "lucide-react";
 import { listFeesForStudent } from "@/lib/fees/queries";
 import { getPerson } from "@/lib/people/queries";
 import { waiveFee } from "@/lib/fees/actions";
+import { getWalletBalance } from "@/lib/wallet/queries";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 import { RecordPaymentForm } from "./record-payment-form";
@@ -24,11 +25,16 @@ export default async function StudentFeesPage({
   const student = await getPerson(studentId);
   if (!student) notFound();
 
-  const fees = await listFeesForStudent(studentId);
+  const [fees, walletBalance] = await Promise.all([listFeesForStudent(studentId), getWalletBalance(studentId)]);
 
   return (
     <PageShell title={student.name} backHref="/fees">
-      <p className="-mt-3 text-sm text-gray-500">{student.phone}</p>
+      <div className="-mt-3 flex items-center justify-between">
+        <p className="text-sm text-gray-500">{student.phone}</p>
+        {walletBalance > 0 && (
+          <p className="text-sm font-medium text-indigo-600">Wallet: LKR {walletBalance.toLocaleString()}</p>
+        )}
+      </div>
 
       {fees.length === 0 ? (
         <EmptyState icon={Receipt} message="No fees yet." />
@@ -63,7 +69,7 @@ export default async function StudentFeesPage({
         </Card>
       )}
 
-      <RecordPaymentForm fees={fees} />
+      <RecordPaymentForm fees={fees} walletBalance={walletBalance} />
     </PageShell>
   );
 }

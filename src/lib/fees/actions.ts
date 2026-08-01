@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
 import { sendSms } from "@/lib/sms";
+import { getWalletBalancesByStudent } from "@/lib/wallet/queries";
 import type { PaymentMethod } from "@/lib/supabase/types";
 
 export interface ActionResult {
@@ -11,7 +12,7 @@ export interface ActionResult {
   success?: boolean;
 }
 
-const METHODS: PaymentMethod[] = ["cash", "bank_transfer", "other"];
+const METHODS: PaymentMethod[] = ["cash", "bank_transfer", "other", "wallet_credit"];
 
 // FR-6.2/6.4/6.5/6.6 — records one or more selected payment rows at once
 // (multi-class / multi-month), each with its own editable amount
@@ -71,6 +72,29 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
     toApply.push({ id: payment.id, amount, newAmountPaid, status });
   }
 
+  const studentId = payments[0].student_id;
+
+  // Paying with existing wallet credit isn't new cash — check there's
+  // actually enough parked before applying it to these fees.
+  const totalRequested = toApply.reduce((sum, t) => sum + t.amount, 0);
+  if (method === "wallet_credit") {
+    const balances = await getWalletBalancesByStudent(admin, session.instituteId, [studentId]);
+    const available = balances.get(studentId) ?? 0;
+    if (totalRequested > available) {
+      return {
+        error: `Only LKR ${available.toFixed(2)} available in wallet credit — reduce the amount or select fewer fees.`,
+      };
+    }
+  }
+
+  // Extra received now, beyond what's due — parked as credit for a future
+  // fee (possibly for a different class) rather than sitting unapplied.
+  const walletCreditRaw = String(formData.get("walletCredit") || "").trim();
+  const walletCreditAmount = walletCreditRaw ? Number(walletCreditRaw) : 0;
+  if (Number.isNaN(walletCreditAmount) || walletCreditAmount < 0) {
+    return { error: "Enter a valid amount to add to the wallet." };
+  }
+
   let totalRecorded = 0;
 
   for (const { id, amount, newAmountPaid, status } of toApply) {
@@ -92,13 +116,37 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
     totalRecorded += amount;
   }
 
+  if (method === "wallet_credit" && totalRecorded > 0) {
+    const { error } = await admin.from("wallet_transactions").insert({
+      institute_id: session.instituteId,
+      student_id: studentId,
+      amount: totalRecorded,
+      type: "debit",
+      payment_id: toApply[0].id,
+      note: `Applied to ${toApply.length} fee(s)`,
+      recorded_by: session.userId,
+    });
+    if (error) return { error: `Could not apply wallet credit: ${error.message}` };
+  }
+
+  if (walletCreditAmount > 0) {
+    const { error } = await admin.from("wallet_transactions").insert({
+      institute_id: session.instituteId,
+      student_id: studentId,
+      amount: walletCreditAmount,
+      type: "credit",
+      note: "Overpayment parked as credit",
+      recorded_by: session.userId,
+    });
+    if (error) return { error: `Could not add to wallet: ${error.message}` };
+  }
+
   revalidatePath("/fees");
 
   // FR-6.8 — explicit opt-in only (FR-9.3: never silent bulk). A failed
   // SMS send never undoes an already-recorded payment — it's logged and
   // swallowed, not surfaced as an action error.
   if (sendReceipt && totalRecorded > 0) {
-    const studentId = payments[0].student_id;
     const { data: student } = await admin
       .from("users")
       .select("name, phone, parent_phone")
