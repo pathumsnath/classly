@@ -33,6 +33,10 @@ export interface EnrolledStudentRow {
   status: "active" | "inactive";
 }
 
+export interface EnrolledClassRow extends ClassRow {
+  enrollmentStatus: "active" | "inactive";
+}
+
 async function tutorNamesById(supabase: Awaited<ReturnType<typeof createClient>>, tutorIds: string[]) {
   if (tutorIds.length === 0) return new Map<string, string>();
   const { data } = await supabase.from("users").select("id, name").in("id", tutorIds);
@@ -143,4 +147,56 @@ export async function listEnrolledStudents(classId: string): Promise<EnrolledStu
     if (!s) return [];
     return [{ id: s.id, name: s.name, phone: s.phone, status: e.status }];
   });
+}
+
+export async function listClassesForStudent(studentId: string): Promise<EnrolledClassRow[]> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: enrollments } = await supabase
+    .from("enrollments")
+    .select("class_id, status")
+    .eq("student_id", studentId)
+    .eq("institute_id", session.instituteId);
+
+  if (!enrollments || enrollments.length === 0) return [];
+
+  const { data: classes } = await supabase
+    .from("classes")
+    .select(
+      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type",
+    )
+    .in(
+      "id",
+      enrollments.map((e) => e.class_id),
+    );
+
+  if (!classes || classes.length === 0) return [];
+
+  const [tutorNames, subjectNames] = await Promise.all([
+    tutorNamesById(
+      supabase,
+      classes.map((c) => c.tutor_id),
+    ),
+    subjectNamesById(
+      supabase,
+      classes.map((c) => c.subject_id),
+    ),
+  ]);
+
+  const statusByClassId = new Map(enrollments.map((e) => [e.class_id, e.status]));
+
+  return classes.map((c) => ({
+    id: c.id,
+    subject: subjectNames.get(c.subject_id) ?? "Unknown",
+    grade: c.grade,
+    medium: c.medium,
+    tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
+    scheduleDays: c.schedule_days,
+    scheduleStartTime: c.schedule_start_time,
+    scheduleEndTime: c.schedule_end_time,
+    feeAmount: c.fee_amount,
+    feeType: c.fee_type,
+    enrollmentStatus: statusByClassId.get(c.id) ?? "active",
+  }));
 }

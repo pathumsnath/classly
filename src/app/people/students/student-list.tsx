@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Search, Users } from "lucide-react";
 import { setStudentStatus } from "@/lib/people/actions";
 import { Card, EmptyState, Avatar } from "@/components/card";
@@ -34,14 +35,16 @@ export function StudentList({ students }: { students: StudentRow[] }) {
         <Card className="divide-y divide-gray-100">
           {visibleStudents.map((student) => (
             <div key={student.id} className="flex items-center gap-3 p-4">
-              <Avatar name={student.name} />
-              <div className="flex-1">
-                <p className="font-medium text-gray-900">{student.name}</p>
-                <p className="text-sm text-gray-500">
-                  {student.phone}
-                  {student.parentPhone ? ` · parent: ${student.parentPhone}` : ""}
-                </p>
-              </div>
+              <Link href={`/people/students/${student.id}`} className="flex flex-1 items-center gap-3">
+                <Avatar name={student.name} />
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900">{student.name}</p>
+                  <p className="text-sm text-gray-500">
+                    {student.phone}
+                    {student.parentPhone ? ` · parent: ${student.parentPhone}` : ""}
+                  </p>
+                </div>
+              </Link>
               <form
                 action={setStudentStatus.bind(
                   null,
