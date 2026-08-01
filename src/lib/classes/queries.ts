@@ -35,6 +35,7 @@ export interface EnrolledStudentRow {
 
 export interface EnrolledClassRow extends ClassRow {
   enrollmentStatus: "active" | "inactive";
+  enrolledAt: string;
 }
 
 async function tutorNamesById(supabase: Awaited<ReturnType<typeof createClient>>, tutorIds: string[]) {
@@ -155,7 +156,7 @@ export async function listClassesForStudent(studentId: string): Promise<Enrolled
 
   const { data: enrollments } = await supabase
     .from("enrollments")
-    .select("class_id, status")
+    .select("class_id, status, enrolled_at")
     .eq("student_id", studentId)
     .eq("institute_id", session.instituteId);
 
@@ -184,19 +185,26 @@ export async function listClassesForStudent(studentId: string): Promise<Enrolled
     ),
   ]);
 
-  const statusByClassId = new Map(enrollments.map((e) => [e.class_id, e.status]));
+  const enrollmentByClassId = new Map(enrollments.map((e) => [e.class_id, e]));
 
-  return classes.map((c) => ({
-    id: c.id,
-    subject: subjectNames.get(c.subject_id) ?? "Unknown",
-    grade: c.grade,
-    medium: c.medium,
-    tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
-    scheduleDays: c.schedule_days,
-    scheduleStartTime: c.schedule_start_time,
-    scheduleEndTime: c.schedule_end_time,
-    feeAmount: c.fee_amount,
-    feeType: c.fee_type,
-    enrollmentStatus: statusByClassId.get(c.id) ?? "active",
-  }));
+  return classes.flatMap((c) => {
+    const enrollment = enrollmentByClassId.get(c.id);
+    if (!enrollment) return [];
+    return [
+      {
+        id: c.id,
+        subject: subjectNames.get(c.subject_id) ?? "Unknown",
+        grade: c.grade,
+        medium: c.medium,
+        tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
+        scheduleDays: c.schedule_days,
+        scheduleStartTime: c.schedule_start_time,
+        scheduleEndTime: c.schedule_end_time,
+        feeAmount: c.fee_amount,
+        feeType: c.fee_type,
+        enrollmentStatus: enrollment.status,
+        enrolledAt: enrollment.enrolled_at,
+      },
+    ];
+  });
 }
