@@ -56,12 +56,12 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
       return { error: "Enter a valid amount for each selected fee." };
     }
 
-    // Overpaying a single month isn't allowed — if there's more to pay
-    // than one month covers, apply the rest to another outstanding month
-    // by checking its box too (each has its own editable amount).
+    // Overpaying a single month isn't allowed — the rest either goes to
+    // another outstanding month (check its box too) or, if there isn't
+    // one, to the "Add extra to wallet" field for a future fee.
     if (amount > balance) {
       return {
-        error: `LKR ${amount.toFixed(2)} is more than the LKR ${balance.toFixed(2)} due for ${payment.month.slice(0, 7)} — check another outstanding month to apply the rest.`,
+        error: `LKR ${amount.toFixed(2)} is more than the LKR ${balance.toFixed(2)} due for ${payment.month.slice(0, 7)} — enter ${balance.toFixed(2)} here, then either check another outstanding month for the rest, or put it in "Add extra to wallet" below.`,
       };
     }
 
