@@ -133,37 +133,41 @@ export function AttendanceForm({
             const status = statuses[student.enrollmentId];
             const StatusIcon = STATUS_ICONS[status];
             return (
-              <div key={student.enrollmentId} className="flex items-center gap-3 p-4">
+              <div key={student.enrollmentId} className="flex flex-col gap-2 p-4">
                 <input type="hidden" name="enrollmentId" value={student.enrollmentId} readOnly />
                 <input type="hidden" name={`status_${student.enrollmentId}`} value={status} readOnly />
 
-                <Avatar name={student.name} />
-                <p className="flex-1 truncate font-medium text-gray-900">{student.name}</p>
+                <div className="flex items-center gap-3">
+                  <Avatar name={student.name} />
+                  <p className="flex-1 font-medium text-gray-900">{student.name}</p>
+                </div>
 
-                <button
-                  type="button"
-                  onClick={() => toggle(student.enrollmentId)}
-                  className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${STATUS_STYLES[status]}`}
-                >
-                  <StatusIcon className="h-3.5 w-3.5" />
-                  {status}
-                </button>
+                <div className="flex items-center gap-2 pl-12">
+                  <button
+                    type="button"
+                    onClick={() => toggle(student.enrollmentId)}
+                    className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${STATUS_STYLES[status]}`}
+                  >
+                    <StatusIcon className="h-3.5 w-3.5" />
+                    {status}
+                  </button>
 
-                <button
-                  type="button"
-                  disabled={student.outstandingPayments.length === 0}
-                  onClick={() =>
-                    student.outstandingPayments.length > 0 &&
-                    setOpenPayment({
-                      studentName: student.name,
-                      payments: student.outstandingPayments,
-                      walletBalance: student.walletBalance,
-                    })
-                  }
-                  className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}
-                >
-                  {feeBadgeLabel(student)}
-                </button>
+                  <button
+                    type="button"
+                    disabled={student.outstandingPayments.length === 0}
+                    onClick={() =>
+                      student.outstandingPayments.length > 0 &&
+                      setOpenPayment({
+                        studentName: student.name,
+                        payments: student.outstandingPayments,
+                        walletBalance: student.walletBalance,
+                      })
+                    }
+                    className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}
+                  >
+                    {feeBadgeLabel(student)}
+                  </button>
+                </div>
               </div>
             );
           })}
