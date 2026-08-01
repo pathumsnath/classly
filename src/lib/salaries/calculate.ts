@@ -41,6 +41,10 @@ export interface ClassSalaryBreakdown {
   model: TutorPaymentModel;
   value: number;
   amount: number;
+  // Only meaningful for revenue_share — the class's total collected fees
+  // this month, so the UI can show income / institute commission / salary
+  // as a breakdown instead of just the tutor's final cut.
+  collectedFees: number | null;
 }
 
 // FR-7.5 — one class's contribution to its tutor's salary for a month.
@@ -52,10 +56,12 @@ export async function calculateClassSalary(
   month: string,
 ): Promise<ClassSalaryBreakdown> {
   let amount = 0;
+  let collected: number | null = null;
 
   switch (cls.tutor_payment_model) {
     case "revenue_share":
-      amount = (await collectedFees(supabase, cls.id, month)) * (cls.tutor_payment_value / 100);
+      collected = await collectedFees(supabase, cls.id, month);
+      amount = collected * (cls.tutor_payment_value / 100);
       break;
     case "fixed":
       amount = cls.tutor_payment_value;
@@ -74,5 +80,6 @@ export async function calculateClassSalary(
     model: cls.tutor_payment_model,
     value: cls.tutor_payment_value,
     amount,
+    collectedFees: collected,
   };
 }

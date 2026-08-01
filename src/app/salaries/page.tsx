@@ -44,16 +44,36 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
                     {s.status === "paid" ? "Paid" : "Unpaid"}
                   </span>
                 </div>
-                <ul className="mt-3 flex flex-col gap-1.5 text-sm text-gray-600">
+                <ul className="mt-3 flex flex-col gap-3 text-sm text-gray-600">
                   {s.classes.length === 0 && <li>No classes assigned.</li>}
-                  {s.classes.map((c) => (
-                    <li key={c.classId} className="flex justify-between">
-                      <span>
-                        {c.subject} ({c.model.replace("_", " ")})
-                      </span>
-                      <span>LKR {c.amount.toFixed(2)}</span>
-                    </li>
-                  ))}
+                  {s.classes.map((c) =>
+                    c.model === "revenue_share" && c.collectedFees !== null ? (
+                      <li key={c.classId} className="flex flex-col gap-1">
+                        <p className="font-medium text-gray-900">
+                          {c.subject} ({c.value}% share)
+                        </p>
+                        <div className="flex justify-between pl-3">
+                          <span>Total income</span>
+                          <span>LKR {c.collectedFees.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between pl-3">
+                          <span>Institute commission ({100 - c.value}%)</span>
+                          <span>LKR {(c.collectedFees - c.amount).toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between pl-3">
+                          <span>Monthly salary</span>
+                          <span>LKR {c.amount.toFixed(2)}</span>
+                        </div>
+                      </li>
+                    ) : (
+                      <li key={c.classId} className="flex justify-between">
+                        <span>
+                          {c.subject} ({c.model.replace("_", " ")})
+                        </span>
+                        <span>LKR {c.amount.toFixed(2)}</span>
+                      </li>
+                    ),
+                  )}
                 </ul>
                 <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
                   <p className="font-medium text-gray-900">Total: LKR {s.total.toFixed(2)}</p>
