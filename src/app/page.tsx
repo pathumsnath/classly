@@ -5,10 +5,13 @@ import { getSessionInfo } from "@/lib/auth/session";
 import { isOnboardingComplete } from "@/lib/onboarding/queries";
 import { getTodaysClasses, type TodayClassRow } from "@/lib/attendance/queries";
 import { listClassesForTutor } from "@/lib/classes/queries";
+import { listTutors } from "@/lib/people/queries";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { logout } from "@/lib/auth/actions";
+import { currentMonthInColombo } from "@/lib/time";
 import { NAV_ITEMS, OWNER_NAV_ITEMS } from "@/lib/nav-items";
 import { Card, EmptyState } from "@/components/card";
+import { AdvanceQuickForm } from "./advance-quick-form";
 
 const BUCKET_STYLES: Record<string, { dot: string; pill: string }> = {
   now: { dot: "bg-green-500", pill: "bg-green-50 text-green-700" },
@@ -153,8 +156,13 @@ export default async function DashboardPage() {
     );
   }
 
-  const todaysClasses = await getTodaysClasses();
-  const navItems = session.role === "owner" ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
+  const isOwner = session.role === "owner";
+  const [todaysClasses, activeTutors] = await Promise.all([
+    getTodaysClasses(),
+    isOwner ? listTutors() : Promise.resolve([]),
+  ]);
+  const navItems = isOwner ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
+  const tutorOptions = activeTutors.filter((t) => t.status === "active").map((t) => ({ id: t.id, name: t.name }));
 
   return (
     <main className="min-h-full flex-1 bg-gray-50">
@@ -180,6 +188,12 @@ export default async function DashboardPage() {
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Today&apos;s classes</h2>
           <TodaysClassesList classes={todaysClasses} showAddLink />
         </section>
+
+        {isOwner && tutorOptions.length > 0 && (
+          <section className="px-4 sm:px-6">
+            <AdvanceQuickForm tutors={tutorOptions} month={currentMonthInColombo()} />
+          </section>
+        )}
       </div>
     </main>
   );

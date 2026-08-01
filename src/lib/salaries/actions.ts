@@ -38,15 +38,16 @@ export interface ActionResult {
 
 // Records money a tutor already drew mid-month (advance against their
 // upcoming salary) so it can be deducted from that month's payable total
-// instead of being paid out twice.
-export async function recordTutorAdvance(
-  tutorId: string,
-  month: string,
-  _prevState: ActionResult,
-  formData: FormData,
-): Promise<ActionResult> {
+// instead of being paid out twice. `tutorId` comes from formData (not a
+// bound param) so the same action serves both a fixed-tutor form (a
+// hidden input, on that tutor's own salary page) and a form where the
+// owner picks the tutor from a dropdown (the dashboard quick-add).
+export async function recordTutorAdvance(month: string, _prevState: ActionResult, formData: FormData): Promise<ActionResult> {
   const session = await requireOwner();
   const supabase = await createClient();
+
+  const tutorId = String(formData.get("tutorId") || "");
+  if (!tutorId) return { error: "Select a tutor." };
 
   const amount = Number(formData.get("amount"));
   if (!Number.isFinite(amount) || amount <= 0) {
@@ -71,6 +72,7 @@ export async function recordTutorAdvance(
 
   revalidatePath("/salaries");
   revalidatePath(`/salaries/${tutorId}`);
+  revalidatePath("/");
 
   return { success: true };
 }
