@@ -149,13 +149,21 @@ export function AttendanceForm({
 
         {/* Hidden inputs stay for every student regardless of the search
             filter above — attendance for a filtered-out student still
-            needs to submit with the rest of the roster. */}
-        {sortedStudents.map((student) => (
-          <div key={student.enrollmentId}>
-            <input type="hidden" name="enrollmentId" value={student.enrollmentId} readOnly />
-            <input type="hidden" name={`status_${student.enrollmentId}`} value={statuses[student.enrollmentId]} readOnly />
-          </div>
-        ))}
+            needs to submit with the rest of the roster. Wrapped in one
+            div so the form's flex `gap` doesn't add spacing per student. */}
+        <div>
+          {sortedStudents.map((student) => (
+            <div key={student.enrollmentId}>
+              <input type="hidden" name="enrollmentId" value={student.enrollmentId} readOnly />
+              <input
+                type="hidden"
+                name={`status_${student.enrollmentId}`}
+                value={statuses[student.enrollmentId]}
+                readOnly
+              />
+            </div>
+          ))}
+        </div>
 
         {visibleStudents.length === 0 ? (
           <p className="px-1 text-sm text-gray-500">No students match &ldquo;{query}&rdquo;.</p>
