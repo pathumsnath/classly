@@ -40,7 +40,7 @@ export default async function StudentDetailPage({
             {classes.map((cls) => (
               <Link
                 key={cls.id}
-                href={`/classes/${cls.id}`}
+                href={`/people/students/${studentId}/${cls.id}`}
                 className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
               >
                 <div>

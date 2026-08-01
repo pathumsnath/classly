@@ -108,3 +108,17 @@ export async function listFeesForStudent(studentId: string): Promise<FeeRow[]> {
 
   return toFeeRows(supabase, data ?? []);
 }
+
+export async function listFeesForStudentInClass(studentId: string, classId: string): Promise<FeeRow[]> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data } = await supabase
+    .from("payments")
+    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status")
+    .eq("institute_id", session.instituteId)
+    .eq("student_id", studentId)
+    .eq("class_id", classId);
+
+  return toFeeRows(supabase, data ?? []);
+}
