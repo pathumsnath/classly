@@ -76,3 +76,8 @@ export async function getTutorSalaries(month: string): Promise<TutorSalary[]> {
 
   return results;
 }
+
+export async function getTutorSalary(tutorId: string, month: string): Promise<TutorSalary | null> {
+  const salaries = await getTutorSalaries(month);
+  return salaries.find((s) => s.tutorId === tutorId) ?? null;
+}

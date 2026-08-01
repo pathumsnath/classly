@@ -1,8 +1,8 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Wallet } from "lucide-react";
 import { getSessionInfo } from "@/lib/auth/session";
 import { getTutorSalaries } from "@/lib/salaries/queries";
-import { markSalaryPaid } from "@/lib/salaries/actions";
 import { currentMonthInColombo } from "@/lib/time";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
@@ -30,65 +30,30 @@ export default async function SalariesPage({ searchParams }: { searchParams: Pro
           message="No salary figures yet — these appear once fee and attendance data exists for your tutors' classes."
         />
       ) : (
-        <ul className="flex max-w-md flex-col gap-4">
+        <Card className="max-w-md divide-y divide-gray-100">
           {salaries.map((s) => (
-            <li key={s.tutorId}>
-              <Card className="p-5">
-                <div className="flex items-center justify-between">
-                  <p className="font-semibold text-gray-900">{s.tutorName}</p>
-                  <span
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                      s.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                    }`}
-                  >
-                    {s.status === "paid" ? "Paid" : "Unpaid"}
-                  </span>
-                </div>
-                <ul className="mt-3 flex flex-col gap-3 text-sm text-gray-600">
-                  {s.classes.length === 0 && <li>No classes assigned.</li>}
-                  {s.classes.map((c) =>
-                    c.model === "revenue_share" && c.collectedFees !== null ? (
-                      <li key={c.classId} className="flex flex-col gap-1">
-                        <p className="font-medium text-gray-900">
-                          {c.subject} ({c.value}% share)
-                        </p>
-                        <div className="flex justify-between pl-3">
-                          <span>Total income</span>
-                          <span>LKR {c.collectedFees.toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between pl-3">
-                          <span>Institute commission ({100 - c.value}%)</span>
-                          <span>LKR {(c.collectedFees - c.amount).toFixed(2)}</span>
-                        </div>
-                        <div className="flex justify-between pl-3">
-                          <span>Monthly salary</span>
-                          <span>LKR {c.amount.toFixed(2)}</span>
-                        </div>
-                      </li>
-                    ) : (
-                      <li key={c.classId} className="flex justify-between">
-                        <span>
-                          {c.subject} ({c.model.replace("_", " ")})
-                        </span>
-                        <span>LKR {c.amount.toFixed(2)}</span>
-                      </li>
-                    ),
-                  )}
-                </ul>
-                <div className="mt-3 flex items-center justify-between border-t border-gray-100 pt-3">
-                  <p className="font-medium text-gray-900">Total: LKR {s.total.toFixed(2)}</p>
-                  {s.status !== "paid" && (
-                    <form action={markSalaryPaid.bind(null, s.tutorId, month, s.total)}>
-                      <button type="submit" className="text-sm font-medium text-indigo-600">
-                        Mark as paid
-                      </button>
-                    </form>
-                  )}
-                </div>
-              </Card>
-            </li>
+            <Link
+              key={s.tutorId}
+              href={`/salaries/${s.tutorId}?month=${month}`}
+              className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
+            >
+              <div>
+                <p className="font-medium text-gray-900">{s.tutorName}</p>
+                <p className="text-sm text-gray-500">{s.classes.length} class(es)</p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <p className="font-medium text-gray-900">LKR {s.total.toFixed(2)}</p>
+                <span
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                    s.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                  }`}
+                >
+                  {s.status === "paid" ? "Paid" : "Unpaid"}
+                </span>
+              </div>
+            </Link>
           ))}
-        </ul>
+        </Card>
       )}
     </PageShell>
   );

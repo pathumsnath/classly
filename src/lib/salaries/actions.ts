@@ -28,4 +28,5 @@ export async function markSalaryPaid(tutorId: string, month: string, amount: num
   if (error) throw new Error(`Could not mark salary as paid: ${error.message}`);
 
   revalidatePath("/salaries");
+  revalidatePath(`/salaries/${tutorId}`);
 }
