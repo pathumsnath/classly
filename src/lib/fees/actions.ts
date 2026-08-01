@@ -34,7 +34,7 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
 
   const { data: payments, error: fetchError } = await admin
     .from("payments")
-    .select("id, student_id, amount_due, amount_paid")
+    .select("id, student_id, month, amount_due, amount_paid")
     .eq("institute_id", session.instituteId)
     .in("id", paymentIds);
 
@@ -42,20 +42,38 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
     return { error: "Could not load the selected fees." };
   }
 
-  let totalRecorded = 0;
+  // Validate every row before writing any of them — a bad amount on one
+  // row shouldn't leave earlier rows in this same submission half-applied.
+  const toApply: { id: string; amount: number; newAmountPaid: number; status: "paid" | "partial" | "pending" }[] = [];
 
   for (const payment of payments) {
     const amountRaw = String(formData.get(`amount_${payment.id}`) || "").trim();
-    const amount = amountRaw ? Number(amountRaw) : payment.amount_due - payment.amount_paid;
+    const balance = payment.amount_due - payment.amount_paid;
+    const amount = amountRaw ? Number(amountRaw) : balance;
 
     if (Number.isNaN(amount) || amount < 0) {
       return { error: "Enter a valid amount for each selected fee." };
     }
 
-    const newAmountPaid = payment.amount_paid + amount;
-    const balance = payment.amount_due - newAmountPaid;
-    const status = balance <= 0 ? "paid" : newAmountPaid > 0 ? "partial" : "pending";
+    // Overpaying a single month isn't allowed — if there's more to pay
+    // than one month covers, apply the rest to another outstanding month
+    // by checking its box too (each has its own editable amount).
+    if (amount > balance) {
+      return {
+        error: `LKR ${amount.toFixed(2)} is more than the LKR ${balance.toFixed(2)} due for ${payment.month.slice(0, 7)} — check another outstanding month to apply the rest.`,
+      };
+    }
 
+    const newAmountPaid = payment.amount_paid + amount;
+    const newBalance = payment.amount_due - newAmountPaid;
+    const status = newBalance <= 0 ? "paid" : newAmountPaid > 0 ? "partial" : "pending";
+
+    toApply.push({ id: payment.id, amount, newAmountPaid, status });
+  }
+
+  let totalRecorded = 0;
+
+  for (const { id, amount, newAmountPaid, status } of toApply) {
     const { error } = await admin
       .from("payments")
       .update({
@@ -67,7 +85,7 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
         recorded_by: session.userId,
         recorded_at: new Date().toISOString(),
       })
-      .eq("id", payment.id);
+      .eq("id", id);
 
     if (error) return { error: `Could not record payment: ${error.message}` };
 
