@@ -11,27 +11,27 @@ function monthDateRange(month: string): { start: string; end: string } {
   return { start, end };
 }
 
-async function collectedFees(supabase: SupabaseClient, classId: string, month: string): Promise<number> {
-  const { data } = await supabase.from("payments").select("amount_paid").eq("class_id", classId).eq("month", month);
-  return (data ?? []).reduce((sum, p) => sum + p.amount_paid, 0);
-}
-
 async function paidStudents(supabase: SupabaseClient, classId: string, month: string): Promise<number> {
   const { data } = await supabase.from("payments").select("amount_paid").eq("class_id", classId).eq("month", month);
   return (data ?? []).filter((p) => p.amount_paid > 0).length;
 }
 
-// Everything still unpaid for this class, across every month (not just the
-// one being viewed) — not yet part of any collectedFees sum, so not yet
-// reflected in any month's salary. Once collected it lands on whichever
-// month the fee was originally for, not necessarily "next month".
-async function outstandingFees(supabase: SupabaseClient, classId: string): Promise<number> {
-  const { data } = await supabase
-    .from("payments")
-    .select("balance")
-    .eq("class_id", classId)
-    .in("status", ["pending", "partial"]);
-  return (data ?? []).reduce((sum, p) => sum + p.balance, 0);
+// One round trip covering both revenue_share figures: this month's
+// collected total, and the total still unpaid across every month (not yet
+// part of any collectedFees sum — once collected it lands on whichever
+// month the fee was originally for, not necessarily "next month").
+async function revenueShareFigures(
+  supabase: SupabaseClient,
+  classId: string,
+  month: string,
+): Promise<{ collected: number; outstanding: number }> {
+  const { data } = await supabase.from("payments").select("amount_paid, balance, status, month").eq("class_id", classId);
+  const rows = data ?? [];
+  const collected = rows.filter((p) => p.month === month).reduce((sum, p) => sum + p.amount_paid, 0);
+  const outstanding = rows
+    .filter((p) => p.status === "pending" || p.status === "partial")
+    .reduce((sum, p) => sum + p.balance, 0);
+  return { collected, outstanding };
 }
 
 // A session "happened" if any attendance was recorded for that date,
@@ -77,11 +77,13 @@ export async function calculateClassSalary(
   let outstanding: number | null = null;
 
   switch (cls.tutor_payment_model) {
-    case "revenue_share":
-      collected = await collectedFees(supabase, cls.id, month);
+    case "revenue_share": {
+      const figures = await revenueShareFigures(supabase, cls.id, month);
+      collected = figures.collected;
+      outstanding = figures.outstanding;
       amount = collected * (cls.tutor_payment_value / 100);
-      outstanding = await outstandingFees(supabase, cls.id);
       break;
+    }
     case "fixed":
       amount = cls.tutor_payment_value;
       break;

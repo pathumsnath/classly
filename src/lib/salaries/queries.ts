@@ -16,16 +16,21 @@ export interface TutorSalary {
 
 // FR-7.3/7.6 — owner-only (requireOwner, plus salary_payments' own RLS as
 // a second layer — see plan). Empty result is expected and fine before
-// real fee/attendance data exists.
-export async function getTutorSalaries(month: string): Promise<TutorSalary[]> {
+// real fee/attendance data exists. `filterTutorIds` lets the single-tutor
+// detail page reuse this without computing every other tutor's breakdown
+// just to discard it.
+export async function getTutorSalaries(month: string, filterTutorIds?: string[]): Promise<TutorSalary[]> {
   const session = await requireOwner();
   const supabase = await createClient();
 
-  const { data: tutorLinks } = await supabase
+  let tutorLinksQuery = supabase
     .from("institute_tutors")
     .select("tutor_id")
     .eq("institute_id", session.instituteId)
     .eq("status", "active");
+  if (filterTutorIds) tutorLinksQuery = tutorLinksQuery.in("tutor_id", filterTutorIds);
+
+  const { data: tutorLinks } = await tutorLinksQuery;
 
   if (!tutorLinks || tutorLinks.length === 0) return [];
 
@@ -53,31 +58,34 @@ export async function getTutorSalaries(month: string): Promise<TutorSalary[]> {
   const nameById = new Map((tutors ?? []).map((t) => [t.id, t.name]));
   const salaryByTutor = new Map((salaryPayments ?? []).map((s) => [s.tutor_id, s]));
 
-  const results: TutorSalary[] = [];
-  for (const tutorId of tutorIds) {
-    const tutorClasses = (classes ?? []).filter((c) => c.tutor_id === tutorId);
-    const breakdown = await Promise.all(
-      tutorClasses.map((c) =>
-        calculateClassSalary(supabase, { ...c, subject: subjectNames.get(c.subject_id) ?? "Unknown" }, month),
-      ),
-    );
-    const total = breakdown.reduce((sum, b) => sum + b.amount, 0);
-    const salary = salaryByTutor.get(tutorId);
+  // Tutors are independent of each other — compute all of them
+  // concurrently instead of one at a time.
+  const results = await Promise.all(
+    tutorIds.map(async (tutorId) => {
+      const tutorClasses = (classes ?? []).filter((c) => c.tutor_id === tutorId);
+      const breakdown = await Promise.all(
+        tutorClasses.map((c) =>
+          calculateClassSalary(supabase, { ...c, subject: subjectNames.get(c.subject_id) ?? "Unknown" }, month),
+        ),
+      );
+      const total = breakdown.reduce((sum, b) => sum + b.amount, 0);
+      const salary = salaryByTutor.get(tutorId);
 
-    results.push({
-      tutorId,
-      tutorName: nameById.get(tutorId) ?? "Unknown",
-      classes: breakdown,
-      total,
-      status: salary?.status ?? "pending",
-      paidAmount: salary?.amount ?? null,
-    });
-  }
+      return {
+        tutorId,
+        tutorName: nameById.get(tutorId) ?? "Unknown",
+        classes: breakdown,
+        total,
+        status: salary?.status ?? "pending",
+        paidAmount: salary?.amount ?? null,
+      };
+    }),
+  );
 
   return results;
 }
 
 export async function getTutorSalary(tutorId: string, month: string): Promise<TutorSalary | null> {
-  const salaries = await getTutorSalaries(month);
-  return salaries.find((s) => s.tutorId === tutorId) ?? null;
+  const salaries = await getTutorSalaries(month, [tutorId]);
+  return salaries[0] ?? null;
 }
