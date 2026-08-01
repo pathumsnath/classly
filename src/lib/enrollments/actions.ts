@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
 import { findOrCreateStudent } from "@/lib/people/actions";
+import { generateMonthlyFees } from "@/lib/fees/generate";
+import { currentMonthInColombo } from "@/lib/time";
 
 export interface ActionResult {
   error?: string;
@@ -64,6 +66,12 @@ export async function enrollStudent(_prevState: ActionResult, formData: FormData
     });
     if (error) return { error: `Could not enrol: ${error.message}` };
   }
+
+  // The monthly cron only runs on the 1st, so a student enrolled mid-month
+  // would otherwise show "no fee" until next month — backfill this
+  // month's fee now instead. Idempotent (upsert + ignoreDuplicates), so
+  // this is safe even if the cron already ran for this institute+month.
+  await generateMonthlyFees(session.instituteId, currentMonthInColombo());
 
   revalidatePath(`/classes/${classId}`);
   return { success: true };
