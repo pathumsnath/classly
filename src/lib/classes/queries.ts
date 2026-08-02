@@ -26,6 +26,9 @@ export interface TutorClassRow extends ClassListRow {
   // Fees collected from this class's students so far this month —
   // gross income, not the tutor's own cut (that's the salary card).
   collectedThisMonth: number;
+  // Enrollments (any status) created this month — how many students
+  // are new to the class, not just currently active.
+  newEnrollmentsThisMonth: number;
 }
 
 export interface ClassDetail extends ClassRow {
@@ -89,6 +92,32 @@ async function collectedByClassId(
   return collected;
 }
 
+function monthEndExclusive(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
+async function newEnrollmentCountsByClassId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  classIds: string[],
+  month: string,
+) {
+  if (classIds.length === 0) return new Map<string, number>();
+  const { data } = await supabase
+    .from("enrollments")
+    .select("class_id")
+    .in("class_id", classIds)
+    .gte("enrolled_at", month)
+    .lt("enrolled_at", monthEndExclusive(month));
+
+  const counts = new Map<string, number>();
+  for (const e of data ?? []) {
+    counts.set(e.class_id, (counts.get(e.class_id) ?? 0) + 1);
+  }
+  return counts;
+}
+
 export async function listClasses(): Promise<ClassListRow[]> {
   const session = await requireSession();
   const supabase = await createClient();
@@ -149,7 +178,7 @@ export async function listClassesForTutor(tutorId: string): Promise<TutorClassRo
   if (!classes || classes.length === 0) return [];
 
   const month = currentMonthInColombo();
-  const [subjectNames, tutorNames, studentCounts, collected] = await Promise.all([
+  const [subjectNames, tutorNames, studentCounts, collected, newEnrollments] = await Promise.all([
     subjectNamesById(
       supabase,
       classes.map((c) => c.subject_id),
@@ -160,6 +189,11 @@ export async function listClassesForTutor(tutorId: string): Promise<TutorClassRo
       classes.map((c) => c.id),
     ),
     collectedByClassId(
+      supabase,
+      classes.map((c) => c.id),
+      month,
+    ),
+    newEnrollmentCountsByClassId(
       supabase,
       classes.map((c) => c.id),
       month,
@@ -179,6 +213,7 @@ export async function listClassesForTutor(tutorId: string): Promise<TutorClassRo
     feeType: c.fee_type,
     studentCount: studentCounts.get(c.id) ?? 0,
     collectedThisMonth: collected.get(c.id) ?? 0,
+    newEnrollmentsThisMonth: newEnrollments.get(c.id) ?? 0,
   }));
 }
 

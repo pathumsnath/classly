@@ -187,10 +187,17 @@ export default async function DashboardPage() {
                         LKR {cls.collectedThisMonth.toLocaleString()} collected this month
                       </span>
                     </div>
-                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                      <Users className="h-3.5 w-3.5" />
-                      {cls.studentCount}
-                    </span>
+                    <div className="flex shrink-0 flex-col items-end gap-1">
+                      <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                        <Users className="h-3.5 w-3.5" />
+                        {cls.studentCount}
+                      </span>
+                      {cls.newEnrollmentsThisMonth > 0 && (
+                        <span className="text-xs font-medium text-indigo-600">
+                          +{cls.newEnrollmentsThisMonth} new
+                        </span>
+                      )}
+                    </div>
                   </Link>
                 ))}
               </Card>
