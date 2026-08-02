@@ -18,6 +18,18 @@ function formatDate(isoDate: string) {
   });
 }
 
+// paidDate is a plain `date` column (a calendar date, not an instant) —
+// pin the render to UTC so the day doesn't shift in a negative-UTC-offset
+// server environment, same as formatMonth below.
+function formatPaidDate(date: string) {
+  return new Date(`${date}T00:00:00`).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function formatMonth(month: string) {
   return new Date(`${month}T00:00:00`).toLocaleDateString("en-US", {
     year: "numeric",
@@ -136,7 +148,7 @@ export function StudentTabs({
                     </p>
                     {fee.paidDate && (
                       <p className="text-sm text-gray-400">
-                        Paid on {formatDate(fee.paidDate)}
+                        Paid on {formatPaidDate(fee.paidDate)}
                         {isCarriedForward(fee) && " · overdue settlement"}
                       </p>
                     )}
