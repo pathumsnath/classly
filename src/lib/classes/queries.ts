@@ -107,7 +107,7 @@ export async function listClasses(): Promise<ClassListRow[]> {
   }));
 }
 
-export async function listClassesForTutor(tutorId: string): Promise<ClassRow[]> {
+export async function listClassesForTutor(tutorId: string): Promise<ClassListRow[]> {
   const session = await requireSession();
   const supabase = await createClient();
 
@@ -122,11 +122,17 @@ export async function listClassesForTutor(tutorId: string): Promise<ClassRow[]> 
 
   if (!classes || classes.length === 0) return [];
 
-  const subjectNames = await subjectNamesById(
-    supabase,
-    classes.map((c) => c.subject_id),
-  );
-  const tutorNames = await tutorNamesById(supabase, [tutorId]);
+  const [subjectNames, tutorNames, studentCounts] = await Promise.all([
+    subjectNamesById(
+      supabase,
+      classes.map((c) => c.subject_id),
+    ),
+    tutorNamesById(supabase, [tutorId]),
+    studentCountsByClassId(
+      supabase,
+      classes.map((c) => c.id),
+    ),
+  ]);
 
   return classes.map((c) => ({
     id: c.id,
@@ -139,6 +145,7 @@ export async function listClassesForTutor(tutorId: string): Promise<ClassRow[]> 
     scheduleEndTime: c.schedule_end_time,
     feeAmount: c.fee_amount,
     feeType: c.fee_type,
+    studentCount: studentCounts.get(c.id) ?? 0,
   }));
 }
 

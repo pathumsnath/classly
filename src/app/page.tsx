@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut, Plus, Wallet, BookOpen, ChevronRight } from "lucide-react";
+import { LogOut, Plus, Wallet, BookOpen, ChevronRight, Users } from "lucide-react";
 import { getSessionInfo } from "@/lib/auth/session";
 import { isOnboardingComplete } from "@/lib/onboarding/queries";
 import { getTodaysClasses, type TodayClassRow } from "@/lib/attendance/queries";
@@ -175,6 +175,10 @@ export default async function DashboardPage() {
                         {cls.scheduleStartTime ? ` · ${cls.scheduleStartTime}` : ""}
                       </p>
                     </div>
+                    <span className="flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                      <Users className="h-3.5 w-3.5" />
+                      {cls.studentCount}
+                    </span>
                   </Link>
                 ))}
               </Card>
