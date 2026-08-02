@@ -1,9 +1,15 @@
 import Link from "next/link";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export function prevMonth(month: string): string {
   const [y, m] = month.split("-").map(Number);
   const d = new Date(Date.UTC(y, m - 2, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
+export function nextMonth(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m, 1));
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
@@ -32,6 +38,19 @@ export function MonthSwitcher({
         <ChevronLeft className="h-4 w-4" />
       </Link>
       <span className="font-medium text-gray-900">{formatMonthLabel(month)}</span>
+      {month === currentMonth ? (
+        <span className="p-1 text-gray-200">
+          <ChevronRight className="h-4 w-4" />
+        </span>
+      ) : (
+        <Link
+          href={`${basePath}?month=${nextMonth(month)}`}
+          aria-label="Next month"
+          className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Link>
+      )}
       {month !== currentMonth && (
         <Link href={`${basePath}?month=${currentMonth}`} className="text-xs font-medium text-indigo-600">
           This month
