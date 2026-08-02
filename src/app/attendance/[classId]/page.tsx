@@ -53,7 +53,7 @@ export default async function AttendancePage({
             <ChevronLeft className="h-4 w-4" />
           </Link>
           <span className="font-medium text-gray-900">
-            {new Date(`${month}T00:00:00`).toLocaleDateString("en-US", {
+            {new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
               month: "long",
               year: "numeric",
               timeZone: "UTC",
@@ -67,6 +67,10 @@ export default async function AttendancePage({
             <ChevronRight className="h-4 w-4" />
           </Link>
         </div>
+
+        <span className="w-fit rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
+          LKR {monthly.collectedThisMonth.toLocaleString()} collected
+        </span>
 
         {monthly.students.length === 0 ? (
           <EmptyState icon={Users} message="No students enrolled in this class yet." />

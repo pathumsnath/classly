@@ -222,6 +222,10 @@ export interface ClassMonthlyAttendance {
   // excluding any that were cancelled — the grid's columns.
   sessionDates: string[];
   students: MonthlyAttendanceStudentRow[];
+  // Fees collected from this class's students for the viewed month —
+  // gross income, same figure the tutor dashboard's class list shows
+  // for the current month, but following whichever month is on screen.
+  collectedThisMonth: number;
 }
 
 // Tutor read-only view — a whole month's attendance for a class at once
@@ -269,7 +273,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     .eq("status", "active");
 
   if (!enrollments || enrollments.length === 0) {
-    return { classId, subject, month, sessionDates, students: [] };
+    return { classId, subject, month, sessionDates, students: [], collectedThisMonth: 0 };
   }
 
   const studentIds = enrollments.map((e) => e.student_id);
@@ -284,7 +288,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
       .in("date", sessionDates),
     supabase
       .from("payments")
-      .select("student_id, status, balance, month")
+      .select("student_id, status, balance, month, amount_paid")
       .eq("class_id", classId)
       .in("student_id", studentIds),
   ]);
@@ -306,6 +310,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     status: "pending" | "partial" | "paid" | "overdue" | "waived";
     balance: number;
     month: string;
+    amount_paid: number;
   }
   const paymentsByStudent = new Map<string, PaymentRow[]>();
   for (const p of (payments ?? []) as PaymentRow[]) {
@@ -313,6 +318,10 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     list.push(p);
     paymentsByStudent.set(p.student_id, list);
   }
+
+  const collectedThisMonth = ((payments ?? []) as PaymentRow[])
+    .filter((p) => p.month === month)
+    .reduce((sum, p) => sum + p.amount_paid, 0);
 
   const rows: MonthlyAttendanceStudentRow[] = enrollments.map((e) => {
     const studentPayments = paymentsByStudent.get(e.student_id) ?? [];
@@ -332,7 +341,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     };
   });
 
-  return { classId, subject, month, sessionDates, students: rows };
+  return { classId, subject, month, sessionDates, students: rows, collectedThisMonth };
 }
 
 export interface AttendanceRecordRow {
