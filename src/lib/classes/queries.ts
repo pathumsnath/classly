@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { requireSession } from "@/lib/auth/require-owner";
 import { subjectNamesById } from "@/lib/subjects/queries";
+import { currentMonthInColombo } from "@/lib/time";
 import type { FeeType, TutorPaymentModel, GradeLevel, ClassMedium } from "@/lib/supabase/types";
 
 export interface ClassRow {
@@ -19,6 +20,12 @@ export interface ClassRow {
 
 export interface ClassListRow extends ClassRow {
   studentCount: number;
+}
+
+export interface TutorClassRow extends ClassListRow {
+  // Fees collected from this class's students so far this month —
+  // gross income, not the tutor's own cut (that's the salary card).
+  collectedThisMonth: number;
 }
 
 export interface ClassDetail extends ClassRow {
@@ -61,6 +68,25 @@ async function studentCountsByClassId(supabase: Awaited<ReturnType<typeof create
     counts.set(e.class_id, (counts.get(e.class_id) ?? 0) + 1);
   }
   return counts;
+}
+
+async function collectedByClassId(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  classIds: string[],
+  month: string,
+) {
+  if (classIds.length === 0) return new Map<string, number>();
+  const { data } = await supabase
+    .from("payments")
+    .select("class_id, amount_paid")
+    .eq("month", month)
+    .in("class_id", classIds);
+
+  const collected = new Map<string, number>();
+  for (const p of data ?? []) {
+    collected.set(p.class_id, (collected.get(p.class_id) ?? 0) + p.amount_paid);
+  }
+  return collected;
 }
 
 export async function listClasses(): Promise<ClassListRow[]> {
@@ -107,7 +133,7 @@ export async function listClasses(): Promise<ClassListRow[]> {
   }));
 }
 
-export async function listClassesForTutor(tutorId: string): Promise<ClassListRow[]> {
+export async function listClassesForTutor(tutorId: string): Promise<TutorClassRow[]> {
   const session = await requireSession();
   const supabase = await createClient();
 
@@ -122,7 +148,8 @@ export async function listClassesForTutor(tutorId: string): Promise<ClassListRow
 
   if (!classes || classes.length === 0) return [];
 
-  const [subjectNames, tutorNames, studentCounts] = await Promise.all([
+  const month = currentMonthInColombo();
+  const [subjectNames, tutorNames, studentCounts, collected] = await Promise.all([
     subjectNamesById(
       supabase,
       classes.map((c) => c.subject_id),
@@ -131,6 +158,11 @@ export async function listClassesForTutor(tutorId: string): Promise<ClassListRow
     studentCountsByClassId(
       supabase,
       classes.map((c) => c.id),
+    ),
+    collectedByClassId(
+      supabase,
+      classes.map((c) => c.id),
+      month,
     ),
   ]);
 
@@ -146,6 +178,7 @@ export async function listClassesForTutor(tutorId: string): Promise<ClassListRow
     feeAmount: c.fee_amount,
     feeType: c.fee_type,
     studentCount: studentCounts.get(c.id) ?? 0,
+    collectedThisMonth: collected.get(c.id) ?? 0,
   }));
 }
 
