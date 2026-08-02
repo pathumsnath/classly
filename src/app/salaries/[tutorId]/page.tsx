@@ -59,6 +59,12 @@ export default async function TutorSalaryPage({
                   <span>Total income</span>
                   <span>LKR {c.collectedFees.toFixed(2)}</span>
                 </div>
+                {c.overdueReceived !== null && c.overdueReceived > 0 && (
+                  <div className="flex justify-between pl-6 text-gray-500">
+                    <span>— incl. carried forward from a past overdue month</span>
+                    <span>LKR {c.overdueReceived.toFixed(2)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between pl-3">
                   <span>Institute commission ({100 - c.value}%)</span>
                   <span>LKR {(c.collectedFees - c.amount).toFixed(2)}</span>

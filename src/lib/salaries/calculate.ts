@@ -16,22 +16,47 @@ async function paidStudents(supabase: SupabaseClient, classId: string, month: st
   return (data ?? []).filter((p) => p.amount_paid > 0).length;
 }
 
-// One round trip covering both revenue_share figures: this month's
-// collected total, and the total still unpaid across every month (not yet
-// part of any collectedFees sum — once collected it lands on whichever
-// month the fee was originally for, not necessarily "next month").
+// Cash-basis (FR-7.2: the institute never pays out more than it actually
+// took in) — income for a month is whatever was actually collected during
+// that calendar month, split into fees that were due this month vs. an
+// earlier month's overdue fee finally settled now. A fee due this month
+// but not paid until a later month correctly counts toward that later
+// month instead, not this one.
+//
+// Known limitation: a payments row only stores one cumulative amount_paid
+// and one paid_date (the most recent update), not a per-installment
+// history. If the same fee is paid in parts across two different months,
+// the whole cumulative amount lands on the month of the last installment
+// rather than being split proportionally. Fine for the common case (a fee
+// sits unpaid, then gets settled in one payment) but not exact for that
+// split-across-months edge case.
 async function revenueShareFigures(
   supabase: SupabaseClient,
   classId: string,
   month: string,
-): Promise<{ collected: number; outstanding: number }> {
-  const { data } = await supabase.from("payments").select("amount_paid, balance, status, month").eq("class_id", classId);
+): Promise<{ collectedThisMonth: number; overdueReceived: number; outstanding: number }> {
+  const { start, end } = monthDateRange(month);
+  const { data } = await supabase
+    .from("payments")
+    .select("amount_paid, balance, status, month, paid_date")
+    .eq("class_id", classId);
   const rows = data ?? [];
-  const collected = rows.filter((p) => p.month === month).reduce((sum, p) => sum + p.amount_paid, 0);
+
+  const collectedInMonth = rows.filter(
+    (p) => p.amount_paid > 0 && p.paid_date !== null && p.paid_date >= start && p.paid_date <= end,
+  );
+  const collectedThisMonth = collectedInMonth
+    .filter((p) => p.month === month)
+    .reduce((sum, p) => sum + p.amount_paid, 0);
+  const overdueReceived = collectedInMonth
+    .filter((p) => p.month !== month)
+    .reduce((sum, p) => sum + p.amount_paid, 0);
+
   const outstanding = rows
     .filter((p) => p.status === "pending" || p.status === "partial")
     .reduce((sum, p) => sum + p.balance, 0);
-  return { collected, outstanding };
+
+  return { collectedThisMonth, overdueReceived, outstanding };
 }
 
 // A session "happened" if any attendance was recorded for that date,
@@ -54,10 +79,15 @@ export interface ClassSalaryBreakdown {
   model: TutorPaymentModel;
   value: number;
   amount: number;
-  // Only meaningful for revenue_share — the class's total collected fees
-  // this month, so the UI can show income / institute commission / salary
-  // as a breakdown instead of just the tutor's final cut.
+  // Only meaningful for revenue_share — total cash actually collected
+  // during this month (this month's own fees + any past-overdue fee
+  // settled now), so the UI can show income / institute commission /
+  // salary as a breakdown instead of just the tutor's final cut.
   collectedFees: number | null;
+  // Only meaningful for revenue_share — the portion of collectedFees that
+  // came from settling a fee originally due in an earlier month, so the
+  // UI can call that out separately (e.g. "incl. LKR X carried forward").
+  overdueReceived: number | null;
   // Only meaningful for revenue_share — total unpaid balance for this
   // class across every month, so the UI can show the tutor's potential
   // cut once it's eventually collected.
@@ -74,12 +104,14 @@ export async function calculateClassSalary(
 ): Promise<ClassSalaryBreakdown> {
   let amount = 0;
   let collected: number | null = null;
+  let overdueReceived: number | null = null;
   let outstanding: number | null = null;
 
   switch (cls.tutor_payment_model) {
     case "revenue_share": {
       const figures = await revenueShareFigures(supabase, cls.id, month);
-      collected = figures.collected;
+      collected = figures.collectedThisMonth + figures.overdueReceived;
+      overdueReceived = figures.overdueReceived;
       outstanding = figures.outstanding;
       amount = collected * (cls.tutor_payment_value / 100);
       break;
@@ -102,6 +134,7 @@ export async function calculateClassSalary(
     value: cls.tutor_payment_value,
     amount,
     collectedFees: collected,
+    overdueReceived,
     outstandingFees: outstanding,
   };
 }
