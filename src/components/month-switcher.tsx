@@ -19,6 +19,12 @@ function formatMonthLabel(month: string): string {
   return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
+function formatMonthName(month: string): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  return d.toLocaleDateString("en-US", { month: "long", timeZone: "UTC" });
+}
+
 export function MonthSwitcher({
   basePath,
   month,
@@ -53,7 +59,7 @@ export function MonthSwitcher({
       )}
       {month !== currentMonth && (
         <Link href={`${basePath}?month=${currentMonth}`} className="text-xs font-medium text-indigo-600">
-          This month
+          Back to {formatMonthName(currentMonth)}
         </Link>
       )}
     </div>
