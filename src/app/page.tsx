@@ -119,7 +119,7 @@ export default async function DashboardPage() {
           {header}
 
           <section className="px-4 sm:px-6">
-            <IncomeTrendChart data={incomeTrend} />
+            <IncomeTrendChart data={incomeTrend.map((d) => ({ month: d.month, value: d.netTotal }))} />
           </section>
 
           <section className="px-4 sm:px-6">

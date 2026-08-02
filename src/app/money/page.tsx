@@ -2,11 +2,12 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Wallet, Clock, AlertCircle, TrendingUp, Scale } from "lucide-react";
 import { getSessionInfo } from "@/lib/auth/session";
-import { getMoneyOverview } from "@/lib/money/queries";
+import { getMoneyOverview, getInstituteIncomeTrend } from "@/lib/money/queries";
 import { currentMonthInColombo } from "@/lib/time";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
 import { MonthSwitcher } from "@/components/month-switcher";
+import { IncomeTrendChart } from "../income-trend-chart";
 
 function StatCard({
   icon: Icon,
@@ -39,10 +40,18 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
   const { month: monthParam } = await searchParams;
   const currentMonth = currentMonthInColombo();
   const month = monthParam || currentMonth;
-  const overview = await getMoneyOverview(month);
+  const [overview, incomeTrend] = await Promise.all([
+    getMoneyOverview(month),
+    getInstituteIncomeTrend(6, currentMonth),
+  ]);
 
   return (
     <PageShell title="Money">
+      <IncomeTrendChart
+        data={incomeTrend.map((d) => ({ month: d.month, value: d.collected }))}
+        title="Income progress"
+      />
+
       <MonthSwitcher basePath="/money" month={month} currentMonth={currentMonth} />
 
       <div className="grid max-w-md grid-cols-2 gap-3">

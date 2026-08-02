@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { Card } from "@/components/card";
-import type { TutorIncomePoint } from "@/lib/salaries/queries";
+
+export interface TrendPoint {
+  month: string;
+  value: number;
+}
 
 const WIDTH = 320;
 const HEIGHT = 120;
@@ -20,16 +24,16 @@ function monthLabelFull(month: string): string {
   return new Date(Date.UTC(y, m - 1, 1)).toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
 }
 
-// Tutor dashboard's "how has my income moved" at a glance — a single
-// series (this tutor's own net payable per month), so no legend: the
-// card title already names what's plotted.
-export function IncomeTrendChart({ data }: { data: TutorIncomePoint[] }) {
+// A single-series "how has this moved over time" at a glance — used for
+// both a tutor's own net payable and the institute's overall collected
+// income, so no legend: the card title already names what's plotted.
+export function IncomeTrendChart({ data, title = "Income trend" }: { data: TrendPoint[]; title?: string }) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   if (data.length < 2) return null;
 
-  const max = Math.max(...data.map((d) => d.netTotal), 0);
-  const min = Math.min(...data.map((d) => d.netTotal), 0);
+  const max = Math.max(...data.map((d) => d.value), 0);
+  const min = Math.min(...data.map((d) => d.value), 0);
   const range = max - min || 1;
 
   const plotWidth = WIDTH - PAD_X * 2;
@@ -37,7 +41,7 @@ export function IncomeTrendChart({ data }: { data: TutorIncomePoint[] }) {
 
   const points = data.map((d, i) => {
     const x = PAD_X + (data.length === 1 ? plotWidth / 2 : (i / (data.length - 1)) * plotWidth);
-    const y = PAD_TOP + plotHeight - ((d.netTotal - min) / range) * plotHeight;
+    const y = PAD_TOP + plotHeight - ((d.value - min) / range) * plotHeight;
     return { x, y, ...d };
   });
 
@@ -56,13 +60,13 @@ export function IncomeTrendChart({ data }: { data: TutorIncomePoint[] }) {
 
   return (
     <Card className="p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">Income trend</p>
+      <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{title}</p>
       <div className="relative mt-2">
         <svg
           viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
           className="w-full touch-none"
           role="img"
-          aria-label={`Monthly income from ${monthLabelFull(data[0].month)} to ${monthLabelFull(data[data.length - 1].month)}, ranging from LKR ${min.toLocaleString()} to LKR ${max.toLocaleString()}`}
+          aria-label={`${title} from ${monthLabelFull(data[0].month)} to ${monthLabelFull(data[data.length - 1].month)}, ranging from LKR ${min.toLocaleString()} to LKR ${max.toLocaleString()}`}
         >
           <line
             x1={PAD_X}
@@ -90,7 +94,7 @@ export function IncomeTrendChart({ data }: { data: TutorIncomePoint[] }) {
           ))}
 
           <text x={last.x} y={last.y - 10} textAnchor="end" className="fill-gray-900 font-semibold" fontSize={11}>
-            LKR {last.netTotal.toLocaleString()}
+            LKR {last.value.toLocaleString()}
           </text>
           <circle cx={last.x} cy={last.y} r={4} fill="#4f46e5" stroke="white" strokeWidth={2} />
 
@@ -117,7 +121,7 @@ export function IncomeTrendChart({ data }: { data: TutorIncomePoint[] }) {
             className="pointer-events-none absolute top-0 -translate-x-1/2 rounded-lg border border-gray-100 bg-white px-2.5 py-1.5 text-xs shadow-md"
             style={{ left: `${(active.x / WIDTH) * 100}%` }}
           >
-            <p className="font-semibold text-gray-900">LKR {active.netTotal.toLocaleString()}</p>
+            <p className="font-semibold text-gray-900">LKR {active.value.toLocaleString()}</p>
             <p className="text-gray-500">{monthLabelFull(active.month)}</p>
           </div>
         )}

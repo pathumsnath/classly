@@ -110,3 +110,38 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
     perClass,
   };
 }
+
+export interface InstituteIncomePoint {
+  month: string;
+  collected: number;
+}
+
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
+// Trailing `months` (including endMonth), oldest first — the Money page's
+// income progress chart. One query summed by month, not one call per
+// month via getMoneyOverview (which also computes tutor salaries — far
+// more than this chart needs).
+export async function getInstituteIncomeTrend(months: number, endMonth: string): Promise<InstituteIncomePoint[]> {
+  const session = await requireOwner();
+  const supabase = await createClient();
+
+  const monthList = Array.from({ length: months }, (_, i) => shiftMonth(endMonth, i - (months - 1)));
+
+  const { data } = await supabase
+    .from("payments")
+    .select("month, amount_paid")
+    .eq("institute_id", session.instituteId)
+    .in("month", monthList);
+
+  const collectedByMonth = new Map<string, number>();
+  for (const p of data ?? []) {
+    collectedByMonth.set(p.month, (collectedByMonth.get(p.month) ?? 0) + p.amount_paid);
+  }
+
+  return monthList.map((month) => ({ month, collected: collectedByMonth.get(month) ?? 0 }));
+}
