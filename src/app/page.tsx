@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut, Plus, Wallet, BookOpen } from "lucide-react";
+import { LogOut, Plus, Wallet, BookOpen, ChevronRight } from "lucide-react";
 import { getSessionInfo } from "@/lib/auth/session";
 import { isOnboardingComplete } from "@/lib/onboarding/queries";
 import { getTodaysClasses, type TodayClassRow } from "@/lib/attendance/queries";
 import { listClassesForTutor } from "@/lib/classes/queries";
+import { getTutorSalary } from "@/lib/salaries/queries";
 import { listTutors } from "@/lib/people/queries";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { logout } from "@/lib/auth/actions";
@@ -101,9 +102,10 @@ export default async function DashboardPage() {
   );
 
   if (session.role === "tutor") {
-    const [todaysClasses, myClasses] = await Promise.all([
+    const [todaysClasses, myClasses, mySalary] = await Promise.all([
       getTodaysClasses(session.userId),
       listClassesForTutor(session.userId),
+      getTutorSalary(session.userId, currentMonthInColombo()),
     ]);
 
     return (
@@ -116,16 +118,43 @@ export default async function DashboardPage() {
             <TodaysClassesList classes={todaysClasses} showAddLink={false} />
           </section>
 
-          <section className="px-4 sm:px-6">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-400">My classes</h2>
-              <Link
-                href={`/salaries/${session.userId}`}
-                className="flex items-center gap-1 text-xs font-semibold text-indigo-600"
-              >
-                <Wallet className="h-3.5 w-3.5" /> My salary
+          {mySalary && (
+            <section className="px-4 sm:px-6">
+              <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">My salary</h2>
+              <Link href={`/salaries/${session.userId}`}>
+                <Card className="flex items-center justify-between gap-4 p-4 transition hover:border-indigo-200 hover:shadow-md">
+                  <div className="flex items-center gap-3">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
+                      <Wallet className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <p className="font-medium text-gray-900">LKR {mySalary.netTotal.toFixed(2)}</p>
+                      <p className="text-sm text-gray-500">
+                        {new Date(`${currentMonthInColombo()}T00:00:00`).toLocaleDateString("en-US", {
+                          month: "long",
+                          year: "numeric",
+                          timeZone: "UTC",
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                        mySalary.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                      }`}
+                    >
+                      {mySalary.status === "paid" ? "Paid" : "Unpaid"}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-gray-300" />
+                  </div>
+                </Card>
               </Link>
-            </div>
+            </section>
+          )}
+
+          <section className="px-4 sm:px-6">
+            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">My classes</h2>
             {myClasses.length === 0 ? (
               <EmptyState icon={BookOpen} message="You're not assigned to any classes yet." />
             ) : (
