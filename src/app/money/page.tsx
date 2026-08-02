@@ -50,7 +50,7 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
         <StatCard icon={Clock} label="Pending" value={`LKR ${overview.pending.toFixed(2)}`} />
         <StatCard
           icon={AlertCircle}
-          label="Overdue"
+          label="Overdue (all-time)"
           value={`LKR ${overview.overdue.toFixed(2)}`}
           valueClass="text-red-600"
         />

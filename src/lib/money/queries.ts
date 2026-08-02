@@ -30,18 +30,29 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
   const session = await requireOwner();
   const supabase = await createClient();
 
-  const { data: payments } = await supabase
-    .from("payments")
-    .select("class_id, student_id, amount_due, amount_paid, balance, status, month")
-    .eq("institute_id", session.instituteId)
-    .eq("month", month);
+  const currentMonth = currentMonthInColombo();
+
+  const [{ data: payments }, { data: unpaid }] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("class_id, student_id, amount_due, amount_paid, balance, status, month")
+      .eq("institute_id", session.instituteId)
+      .eq("month", month),
+    // Overdue is a snapshot of what's currently late across every month,
+    // not scoped to whichever month the switcher happens to be showing —
+    // being late isn't a property of the month you're browsing, it's a
+    // property of today's date vs. when the fee was due.
+    supabase
+      .from("payments")
+      .select("balance, status, month")
+      .eq("institute_id", session.instituteId)
+      .in("status", ["pending", "partial"]),
+  ]);
 
   const rows = payments ?? [];
-  const currentMonth = currentMonthInColombo();
 
   let collected = 0;
   let pending = 0;
-  let overdueTotal = 0;
   let totalDue = 0;
 
   const byClass = new Map<string, { due: number; paid: number; students: Set<string> }>();
@@ -50,9 +61,7 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
     collected += p.amount_paid;
     totalDue += p.amount_due;
 
-    if (isOverdue(p.status, p.month, currentMonth)) {
-      overdueTotal += p.balance;
-    } else if (p.status === "pending" || p.status === "partial") {
+    if (!isOverdue(p.status, p.month, currentMonth) && (p.status === "pending" || p.status === "partial")) {
       pending += p.balance;
     }
 
@@ -62,6 +71,10 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
     entry.students.add(p.student_id);
     byClass.set(p.class_id, entry);
   }
+
+  const overdueTotal = (unpaid ?? [])
+    .filter((p) => isOverdue(p.status, p.month, currentMonth))
+    .reduce((sum, p) => sum + p.balance, 0);
 
   const classIds = [...byClass.keys()];
   const { data: classes } = classIds.length
