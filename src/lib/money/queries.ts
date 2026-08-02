@@ -113,7 +113,7 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
 
 export interface InstituteIncomePoint {
   month: string;
-  collected: number;
+  net: number;
 }
 
 function shiftMonth(month: string, delta: number): string {
@@ -123,25 +123,33 @@ function shiftMonth(month: string, delta: number): string {
 }
 
 // Trailing `months` (including endMonth), oldest first — the Money page's
-// income progress chart. One query summed by month, not one call per
-// month via getMoneyOverview (which also computes tutor salaries — far
-// more than this chart needs).
+// income progress chart. Same net figure as getMoneyOverview's netFigure
+// (collected minus that month's gross tutor salaries), computed for each
+// month in the range so the chart tells the same story as the "Net"
+// stat card for whichever month you're currently viewing there.
 export async function getInstituteIncomeTrend(months: number, endMonth: string): Promise<InstituteIncomePoint[]> {
   const session = await requireOwner();
   const supabase = await createClient();
 
   const monthList = Array.from({ length: months }, (_, i) => shiftMonth(endMonth, i - (months - 1)));
 
-  const { data } = await supabase
-    .from("payments")
-    .select("month, amount_paid")
-    .eq("institute_id", session.instituteId)
-    .in("month", monthList);
+  const [{ data: payments }, salariesByMonth] = await Promise.all([
+    supabase
+      .from("payments")
+      .select("month, amount_paid")
+      .eq("institute_id", session.instituteId)
+      .in("month", monthList),
+    Promise.all(monthList.map((month) => getTutorSalaries(month))),
+  ]);
 
   const collectedByMonth = new Map<string, number>();
-  for (const p of data ?? []) {
+  for (const p of payments ?? []) {
     collectedByMonth.set(p.month, (collectedByMonth.get(p.month) ?? 0) + p.amount_paid);
   }
 
-  return monthList.map((month) => ({ month, collected: collectedByMonth.get(month) ?? 0 }));
+  return monthList.map((month, i) => {
+    const collected = collectedByMonth.get(month) ?? 0;
+    const tutorTotal = salariesByMonth[i].reduce((sum, s) => sum + s.total, 0);
+    return { month, net: collected - tutorTotal };
+  });
 }

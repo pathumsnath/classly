@@ -48,7 +48,7 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
   return (
     <PageShell title="Money">
       <IncomeTrendChart
-        data={incomeTrend.map((d) => ({ month: d.month, value: d.collected }))}
+        data={incomeTrend.map((d) => ({ month: d.month, value: d.net }))}
         title="Income progress"
       />
 
