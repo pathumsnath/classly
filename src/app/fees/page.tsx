@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { Search, Receipt } from "lucide-react";
 import { listFees } from "@/lib/fees/queries";
 import { listStudents } from "@/lib/people/queries";
+import { getWalletBalancesForStudents } from "@/lib/wallet/queries";
 import { getSessionInfo } from "@/lib/auth/session";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState } from "@/components/card";
+import { RecordFeePaymentForm } from "../record-fee-payment-form";
 
 function formatMonth(month: string) {
   return new Date(`${month}T00:00:00`).toLocaleDateString("en-US", {
@@ -27,19 +29,25 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   if (!session || session.role === "tutor") redirect("/");
 
   const { q } = await searchParams;
-  const fees = await listFees();
+  const [fees, allStudents] = await Promise.all([listFees(), listStudents()]);
+
+  const studentOptions = allStudents.filter((s) => s.status === "active").map((s) => ({ id: s.id, name: s.name }));
+  const walletBalances = Object.fromEntries(await getWalletBalancesForStudents(studentOptions.map((s) => s.id)));
 
   let searchResults: { id: string; name: string; phone: string }[] = [];
   if (q?.trim()) {
-    const students = await listStudents();
     const needle = q.trim().toLowerCase();
-    searchResults = students
+    searchResults = allStudents
       .filter((s) => s.name.toLowerCase().includes(needle) || s.phone.includes(needle))
       .map((s) => ({ id: s.id, name: s.name, phone: s.phone }));
   }
 
   return (
     <PageShell title="Fees">
+      {studentOptions.length > 0 && (
+        <RecordFeePaymentForm students={studentOptions} fees={fees} walletBalances={walletBalances} />
+      )}
+
       <form className="flex max-w-sm gap-2">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
