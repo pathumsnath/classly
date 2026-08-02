@@ -5,6 +5,7 @@ import { markSalaryPaid, deleteTutorAdvance } from "@/lib/salaries/actions";
 import { currentMonthInColombo } from "@/lib/time";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/card";
+import { MonthSwitcher } from "@/components/month-switcher";
 import { RecordAdvanceForm } from "./record-advance-form";
 
 export default async function TutorSalaryPage({
@@ -20,20 +21,15 @@ export default async function TutorSalaryPage({
   if (!session || (session.role !== "owner" && !isSelf)) redirect("/");
 
   const { month: monthParam } = await searchParams;
-  const month = monthParam || currentMonthInColombo();
+  const currentMonth = currentMonthInColombo();
+  const month = monthParam || currentMonth;
 
   const salary = await getTutorSalary(tutorId, month);
   if (!salary) notFound();
 
   return (
     <PageShell title={salary.tutorName} backHref={isSelf ? "/" : `/salaries?month=${month}`}>
-      <p className="-mt-3 text-sm text-gray-500">
-        {new Date(`${month}T00:00:00`).toLocaleDateString("en-US", {
-          month: "long",
-          year: "numeric",
-          timeZone: "UTC",
-        })}
-      </p>
+      <MonthSwitcher basePath={`/salaries/${tutorId}`} month={month} currentMonth={currentMonth} />
 
       <Card className="p-5">
         <div className="flex items-center justify-between">
