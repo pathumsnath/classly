@@ -2,9 +2,90 @@
 
 import { useState } from "react";
 import { useActionState } from "react";
+import { Search, X } from "lucide-react";
 import { recordPayment } from "@/lib/fees/actions";
 import { Field, FormError, Select, SubmitButton } from "@/components/form";
 import type { FeeRow } from "@/lib/fees/queries";
+
+// A plain <select> doesn't scale to an institute with hundreds of
+// students — type-to-filter instead, same search-then-pick pattern
+// already used on the Fees page's student search.
+function StudentPicker({
+  students,
+  studentId,
+  onSelect,
+}: {
+  students: { id: string; name: string }[];
+  studentId: string;
+  onSelect: (id: string) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const selected = students.find((s) => s.id === studentId);
+
+  if (selected) {
+    return (
+      <div className="flex flex-col gap-1.5 text-sm font-medium text-gray-700">
+        Student
+        <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+          <span className="text-base text-gray-900">{selected.name}</span>
+          <button
+            type="button"
+            onClick={() => {
+              onSelect("");
+              setQuery("");
+            }}
+            aria-label="Change student"
+            className="text-gray-400 hover:text-gray-600"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const matches =
+    query.trim().length > 0
+      ? students.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
+      : [];
+
+  return (
+    <div className="flex flex-col gap-1.5 text-sm font-medium text-gray-700">
+      Student
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search students by name…"
+          className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-base text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+        />
+      </div>
+      {query.trim() && (
+        <div className="overflow-hidden rounded-lg border border-gray-100 shadow-sm">
+          {matches.length === 0 ? (
+            <p className="bg-white px-3 py-2 text-sm text-gray-500">No students match &ldquo;{query}&rdquo;.</p>
+          ) : (
+            matches.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => {
+                  onSelect(s.id);
+                  setQuery("");
+                }}
+                className="block w-full border-b border-gray-100 bg-white px-3 py-2 text-left text-sm text-gray-900 last:border-b-0 hover:bg-gray-50"
+              >
+                {s.name}
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function RecordFeePaymentForm({
   students,
@@ -28,22 +109,8 @@ export function RecordFeePaymentForm({
     >
       <h2 className="font-semibold text-gray-900">Record a fee payment</h2>
 
-      <Select
-        label="Student"
-        name="studentId"
-        required
-        value={studentId}
-        onChange={(e) => setStudentId(e.target.value)}
-      >
-        <option value="" disabled>
-          Select a student
-        </option>
-        {students.map((s) => (
-          <option key={s.id} value={s.id}>
-            {s.name}
-          </option>
-        ))}
-      </Select>
+      <input type="hidden" name="studentId" value={studentId} />
+      <StudentPicker students={students} studentId={studentId} onSelect={setStudentId} />
 
       {studentId && (
         <>
