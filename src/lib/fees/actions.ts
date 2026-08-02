@@ -22,7 +22,35 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
   const session = await requireSession();
 
   const paymentIds = formData.getAll("paymentId").map(String);
-  if (paymentIds.length === 0) return { error: "Select at least one fee to record." };
+  const providedStudentId = String(formData.get("studentId") || "") || null;
+
+  const walletCreditRaw = String(formData.get("walletCredit") || "").trim();
+  const walletCreditAmount = walletCreditRaw ? Number(walletCreditRaw) : 0;
+  if (Number.isNaN(walletCreditAmount) || walletCreditAmount < 0) {
+    return { error: "Enter a valid amount to add to the wallet." };
+  }
+
+  // No fee selected — only valid as a standalone wallet top-up (e.g. a
+  // parent pre-paying before any fee is due). Needs an explicit studentId
+  // since there's no payment row to infer it from.
+  if (paymentIds.length === 0) {
+    if (!providedStudentId) return { error: "Select at least one fee to record." };
+    if (walletCreditAmount <= 0) return { error: "Select at least one fee, or enter an amount to add to the wallet." };
+
+    const { error } = await createAdminClient().from("wallet_transactions").insert({
+      institute_id: session.instituteId,
+      student_id: providedStudentId,
+      amount: walletCreditAmount,
+      type: "credit",
+      note: "Advance payment parked as credit",
+      recorded_by: session.userId,
+    });
+    if (error) return { error: `Could not add to wallet: ${error.message}` };
+
+    revalidatePath("/fees");
+    revalidatePath(`/fees/${providedStudentId}`);
+    return { success: true };
+  }
 
   const method = String(formData.get("method") || "") as PaymentMethod;
   if (!METHODS.includes(method)) return { error: "Select a payment method." };
@@ -85,14 +113,6 @@ export async function recordPayment(_prevState: ActionResult, formData: FormData
         error: `Only LKR ${available.toFixed(2)} available in wallet credit — reduce the amount or select fewer fees.`,
       };
     }
-  }
-
-  // Extra received now, beyond what's due — parked as credit for a future
-  // fee (possibly for a different class) rather than sitting unapplied.
-  const walletCreditRaw = String(formData.get("walletCredit") || "").trim();
-  const walletCreditAmount = walletCreditRaw ? Number(walletCreditRaw) : 0;
-  if (Number.isNaN(walletCreditAmount) || walletCreditAmount < 0) {
-    return { error: "Enter a valid amount to add to the wallet." };
   }
 
   let totalRecorded = 0;

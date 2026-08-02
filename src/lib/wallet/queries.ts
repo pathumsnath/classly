@@ -55,3 +55,13 @@ export async function getWalletBalancesByStudent(
 
   return new Map(studentIds.map((id) => [id, sumBalance(byStudent.get(id) ?? [])]));
 }
+
+// Convenience wrapper for pages that already have a plain student list and
+// just want everyone's balance in one round trip (e.g. a dashboard picker
+// that needs to show "(LKR X available)" for whichever student gets
+// selected, without a query per student).
+export async function getWalletBalancesForStudents(studentIds: string[]): Promise<Map<string, number>> {
+  const session = await requireSession();
+  const supabase = await createClient();
+  return getWalletBalancesByStudent(supabase, session.instituteId, studentIds);
+}

@@ -6,13 +6,16 @@ import { isOnboardingComplete } from "@/lib/onboarding/queries";
 import { getTodaysClasses, type TodayClassRow } from "@/lib/attendance/queries";
 import { listClassesForTutor } from "@/lib/classes/queries";
 import { getTutorSalary } from "@/lib/salaries/queries";
-import { listTutors } from "@/lib/people/queries";
+import { listTutors, listStudents } from "@/lib/people/queries";
+import { listFees } from "@/lib/fees/queries";
+import { getWalletBalancesForStudents } from "@/lib/wallet/queries";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { logout } from "@/lib/auth/actions";
 import { currentMonthInColombo } from "@/lib/time";
 import { NAV_ITEMS, OWNER_NAV_ITEMS } from "@/lib/nav-items";
 import { Card, EmptyState } from "@/components/card";
 import { AdvanceQuickForm } from "./advance-quick-form";
+import { RecordFeePaymentForm } from "./record-fee-payment-form";
 
 const BUCKET_STYLES: Record<string, { dot: string; pill: string }> = {
   now: { dot: "bg-green-500", pill: "bg-green-50 text-green-700" },
@@ -193,12 +196,18 @@ export default async function DashboardPage() {
   }
 
   const isOwner = session.role === "owner";
-  const [todaysClasses, activeTutors] = await Promise.all([
+  const [todaysClasses, activeTutors, allStudents, allFees] = await Promise.all([
     getTodaysClasses(),
     isOwner ? listTutors() : Promise.resolve([]),
+    listStudents(),
+    listFees(),
   ]);
   const navItems = isOwner ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
   const tutorOptions = activeTutors.filter((t) => t.status === "active").map((t) => ({ id: t.id, name: t.name }));
+  const studentOptions = allStudents.filter((s) => s.status === "active").map((s) => ({ id: s.id, name: s.name }));
+  const walletBalances = Object.fromEntries(
+    await getWalletBalancesForStudents(studentOptions.map((s) => s.id)),
+  );
 
   return (
     <main className="min-h-full flex-1 bg-gray-50">
@@ -224,6 +233,12 @@ export default async function DashboardPage() {
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Today&apos;s classes</h2>
           <TodaysClassesList classes={todaysClasses} showAddLink />
         </section>
+
+        {studentOptions.length > 0 && (
+          <section className="px-4 sm:px-6">
+            <RecordFeePaymentForm students={studentOptions} fees={allFees} walletBalances={walletBalances} />
+          </section>
+        )}
 
         {isOwner && tutorOptions.length > 0 && (
           <section className="px-4 sm:px-6">
