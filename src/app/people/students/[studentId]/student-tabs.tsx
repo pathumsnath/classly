@@ -52,6 +52,33 @@ function isCarriedForward(fee: FeeRow): boolean {
   return fee.paidDate !== null && fee.paidDate.slice(0, 7) > fee.month.slice(0, 7);
 }
 
+// Aggregated across every month owed for this one class (not the
+// student's other classes) — same "outstanding" definition used for the
+// attendance roster's fee badge.
+function classFeeStatus(classId: string, payments: FeeRow[]) {
+  const classPayments = payments.filter((p) => p.classId === classId);
+  const outstanding = classPayments.filter((p) => p.status === "pending" || p.status === "partial");
+  return {
+    hasFeeRecords: classPayments.length > 0,
+    balance: outstanding.reduce((sum, p) => sum + p.balance, 0),
+    isOverdue: outstanding.some((p) => p.isOverdue),
+  };
+}
+
+function feeBadgeClass(status: ReturnType<typeof classFeeStatus>) {
+  if (!status.hasFeeRecords || status.balance <= 0) {
+    return status.hasFeeRecords ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500";
+  }
+  return status.isOverdue ? "bg-red-100 text-red-700" : "bg-yellow-100 text-yellow-700";
+}
+
+function feeBadgeLabel(status: ReturnType<typeof classFeeStatus>) {
+  if (!status.hasFeeRecords) return "No fee";
+  if (status.balance <= 0) return "Paid";
+  const amount = `LKR ${status.balance.toLocaleString()}`;
+  return status.isOverdue ? `${amount} overdue` : `${amount} due`;
+}
+
 export function StudentTabs({
   studentId,
   classes,
@@ -99,26 +126,34 @@ export function StudentTabs({
           <EmptyState icon={GraduationCap} message="Not enrolled in any classes yet." />
         ) : (
           <Card className="divide-y divide-gray-100">
-            {classes.map((cls) => (
-              <Link
-                key={cls.id}
-                href={`/people/students/${studentId}/${cls.id}`}
-                className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
-              >
-                <div>
-                  <p className="font-medium text-gray-900">{cls.subject}</p>
-                  <p className="text-sm text-gray-500">
-                    {formatGrade(cls.grade)} · {formatMedium(cls.medium)} · {cls.tutorName}
-                  </p>
-                  <p className="text-sm text-gray-400">Enrolled {formatDate(cls.enrolledAt)}</p>
-                </div>
-                {cls.enrollmentStatus === "inactive" && (
-                  <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                    Inactive
-                  </span>
-                )}
-              </Link>
-            ))}
+            {classes.map((cls) => {
+              const feeStatus = classFeeStatus(cls.id, payments);
+              return (
+                <Link
+                  key={cls.id}
+                  href={`/people/students/${studentId}/${cls.id}`}
+                  className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
+                >
+                  <div>
+                    <p className="font-medium text-gray-900">{cls.subject}</p>
+                    <p className="text-sm text-gray-500">
+                      {formatGrade(cls.grade)} · {formatMedium(cls.medium)} · {cls.tutorName}
+                    </p>
+                    <p className="text-sm text-gray-400">Enrolled {formatDate(cls.enrolledAt)}</p>
+                  </div>
+                  <div className="flex shrink-0 flex-col items-end gap-1.5">
+                    <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${feeBadgeClass(feeStatus)}`}>
+                      {feeBadgeLabel(feeStatus)}
+                    </span>
+                    {cls.enrollmentStatus === "inactive" && (
+                      <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                        Inactive
+                      </span>
+                    )}
+                  </div>
+                </Link>
+              );
+            })}
           </Card>
         )
       ) : (
