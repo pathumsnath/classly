@@ -174,9 +174,9 @@ export default async function DashboardPage() {
                         {cls.scheduleDays.join(", ") || "no schedule set"}
                         {cls.scheduleStartTime ? ` · ${cls.scheduleStartTime}` : ""}
                       </p>
-                      <p className="mt-1 text-sm text-gray-500">
+                      <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                         LKR {cls.collectedThisMonth.toLocaleString()} collected this month
-                      </p>
+                      </span>
                     </div>
                     <span className="flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
                       <Users className="h-3.5 w-3.5" />
