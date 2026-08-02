@@ -5,7 +5,7 @@ import { getSessionInfo } from "@/lib/auth/session";
 import { isOnboardingComplete } from "@/lib/onboarding/queries";
 import { getTodaysClasses, type TodayClassRow } from "@/lib/attendance/queries";
 import { listClassesForTutor } from "@/lib/classes/queries";
-import { getTutorSalary } from "@/lib/salaries/queries";
+import { getTutorSalary, getTutorIncomeTrend } from "@/lib/salaries/queries";
 import { listTutors, listStudents } from "@/lib/people/queries";
 import { listFees } from "@/lib/fees/queries";
 import { getWalletBalancesForStudents } from "@/lib/wallet/queries";
@@ -16,6 +16,7 @@ import { NAV_ITEMS, OWNER_NAV_ITEMS } from "@/lib/nav-items";
 import { Card, EmptyState } from "@/components/card";
 import { AdvanceQuickForm } from "./advance-quick-form";
 import { RecordFeePaymentForm } from "./record-fee-payment-form";
+import { IncomeTrendChart } from "./income-trend-chart";
 
 const BUCKET_STYLES: Record<string, { dot: string; pill: string }> = {
   now: { dot: "bg-green-500", pill: "bg-green-50 text-green-700" },
@@ -105,16 +106,21 @@ export default async function DashboardPage() {
   );
 
   if (session.role === "tutor") {
-    const [todaysClasses, myClasses, mySalary] = await Promise.all([
+    const [todaysClasses, myClasses, mySalary, incomeTrend] = await Promise.all([
       getTodaysClasses(session.userId),
       listClassesForTutor(session.userId),
       getTutorSalary(session.userId, currentMonthInColombo()),
+      getTutorIncomeTrend(session.userId, 6, currentMonthInColombo()),
     ]);
 
     return (
       <main className="min-h-full flex-1 bg-gray-50">
         <div className="mx-auto flex max-w-2xl flex-col gap-6 pb-10">
           {header}
+
+          <section className="px-4 sm:px-6">
+            <IncomeTrendChart data={incomeTrend} />
+          </section>
 
           <section className="px-4 sm:px-6">
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Today&apos;s classes</h2>

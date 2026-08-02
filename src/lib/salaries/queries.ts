@@ -125,6 +125,26 @@ export async function getTutorSalary(tutorId: string, month: string): Promise<Tu
   return salaries[0] ?? null;
 }
 
+export interface TutorIncomePoint {
+  month: string;
+  netTotal: number;
+}
+
+function shiftMonth(month: string, delta: number): string {
+  const [y, m] = month.split("-").map(Number);
+  const d = new Date(Date.UTC(y, m - 1 + delta, 1));
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
+}
+
+// Trailing `months` (including endMonth), oldest first — the tutor
+// dashboard's income trend chart. Reuses getTutorSalary's own self-view
+// carve-out, so no separate authorization check is needed here.
+export async function getTutorIncomeTrend(tutorId: string, months: number, endMonth: string): Promise<TutorIncomePoint[]> {
+  const monthList = Array.from({ length: months }, (_, i) => shiftMonth(endMonth, i - (months - 1)));
+  const salaries = await Promise.all(monthList.map((month) => getTutorSalary(tutorId, month)));
+  return monthList.map((month, i) => ({ month, netTotal: salaries[i]?.netTotal ?? 0 }));
+}
+
 export interface SalaryPaymentRow {
   id: string;
   month: string;
