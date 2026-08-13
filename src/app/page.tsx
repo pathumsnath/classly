@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { LogOut, Plus, Wallet, BookOpen, ChevronRight, Users } from "lucide-react";
+import { LogOut, Plus, Wallet, BookOpen, ChevronRight, Users, ClipboardCheck } from "lucide-react";
 import { getSessionInfo } from "@/lib/auth/session";
 import { isOnboardingComplete } from "@/lib/onboarding/queries";
 import { getTodaysClasses, type TodayClassRow } from "@/lib/attendance/queries";
@@ -20,10 +20,10 @@ import { RecordFeePaymentForm } from "./record-fee-payment-form";
 import { IncomeTrendChart } from "./income-trend-chart";
 import { CommissionRateForm } from "./commission-rate-form";
 
-const BUCKET_STYLES: Record<string, { dot: string; pill: string }> = {
-  now: { dot: "bg-green-500", pill: "bg-green-50 text-green-700" },
-  upcoming: { dot: "bg-gray-300", pill: "bg-gray-100 text-gray-600" },
-  done: { dot: "bg-gray-200", pill: "bg-gray-50 text-gray-400" },
+const BUCKET_STYLES: Record<string, { dot: string; button: string; label: string }> = {
+  now: { dot: "bg-green-500", button: "bg-indigo-600 text-white hover:bg-indigo-500", label: "Mark attendance" },
+  upcoming: { dot: "bg-gray-300", button: "bg-indigo-600 text-white hover:bg-indigo-500", label: "Mark attendance" },
+  done: { dot: "bg-gray-200", button: "bg-gray-100 text-gray-600 hover:bg-gray-200", label: "View" },
 };
 
 function TodaysClassesList({ classes, showAddLink }: { classes: TodayClassRow[]; showAddLink: boolean }) {
@@ -46,24 +46,28 @@ function TodaysClassesList({ classes, showAddLink }: { classes: TodayClassRow[];
       {classes.map((cls) => {
         const style = BUCKET_STYLES[cls.bucket];
         return (
-          <li key={cls.id}>
+          <li
+            key={cls.id}
+            className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
+          >
+            <div className="flex items-center gap-3">
+              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
+              <div>
+                <p className="font-medium text-gray-900">{cls.subject}</p>
+                {cls.scheduleStartTime && (
+                  <p className="text-xs text-gray-500">
+                    {cls.scheduleStartTime}
+                    {cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}
+                  </p>
+                )}
+              </div>
+            </div>
             <Link
               href={`/attendance/${cls.id}`}
-              className="flex items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition ${style.button}`}
             >
-              <div className="flex items-center gap-3">
-                <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
-                <div>
-                  <p className="font-medium text-gray-900">{cls.subject}</p>
-                  {cls.scheduleStartTime && (
-                    <p className="text-xs text-gray-500">
-                      {cls.scheduleStartTime}
-                      {cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <span className={`rounded-full px-2.5 py-1 text-xs font-medium ${style.pill}`}>{cls.bucket}</span>
+              <ClipboardCheck className="h-3.5 w-3.5" />
+              {style.label}
             </Link>
           </li>
         );
@@ -231,14 +235,14 @@ export default async function DashboardPage() {
         {header}
 
         <nav className="grid grid-cols-3 gap-3 px-4 sm:grid-cols-4 sm:px-6">
-          {navItems.map(({ href, label, Icon }) => (
+          {navItems.map(({ href, label, Icon, color }) => (
             <Link
               key={href}
               href={href}
-              className="flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-white p-4 text-center shadow-sm transition hover:border-indigo-200 hover:shadow-md"
+              className={`flex flex-col items-center gap-2 rounded-xl border border-gray-100 bg-white p-4 text-center shadow-sm transition hover:-translate-y-0.5 hover:shadow-md ${color.hoverBorder}`}
             >
-              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
-                <Icon className="h-5 w-5" />
+              <span className={`flex h-12 w-12 items-center justify-center rounded-full ${color.bg} ${color.text}`}>
+                <Icon className="h-6 w-6" />
               </span>
               <span className="text-xs font-medium text-gray-700">{label}</span>
             </Link>
