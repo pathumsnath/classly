@@ -86,7 +86,7 @@ export default async function DashboardPage() {
   }
 
   const header = (
-    <header className="flex items-center justify-between border-b border-gray-100 bg-white px-4 py-5 sm:px-6">
+    <header className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-100 bg-white px-4 py-5 sm:px-6">
       <div>
         <h1 className="text-lg font-bold text-gray-900">{session.instituteName}</h1>
         <p className="text-sm text-gray-500">
