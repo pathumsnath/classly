@@ -139,28 +139,33 @@ export function StudentTabs({
           <Card className="divide-y divide-gray-100">
             {classes.map((cls) => {
               const feeStatus = classFeeStatus(cls.id, payments);
+              const owesMoney = feeStatus.overdueBalance > 0 || feeStatus.dueBalance > 0;
               return (
-                <Link
-                  key={cls.id}
-                  href={`/people/students/${studentId}/${cls.id}`}
-                  className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
-                >
-                  <div>
+                <div key={cls.id} className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50">
+                  <Link href={`/people/students/${studentId}/${cls.id}`} className="min-w-0 flex-1">
                     <p className="font-medium text-gray-900">{cls.subject}</p>
                     <p className="text-sm text-gray-500">
                       {formatGrade(cls.grade)} · {formatMedium(cls.medium)} · {cls.tutorName}
                     </p>
                     <p className="text-sm text-gray-400">Enrolled {formatDate(cls.enrolledAt)}</p>
-                  </div>
+                  </Link>
                   <div className="flex shrink-0 flex-col items-end gap-1.5">
                     <FeeBadges status={feeStatus} />
+                    {owesMoney && (
+                      <Link
+                        href={`/fees/${studentId}`}
+                        className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-600 hover:bg-indigo-100"
+                      >
+                        Quick pay
+                      </Link>
+                    )}
                     {cls.enrollmentStatus === "inactive" && (
                       <span className="rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
                         Inactive
                       </span>
                     )}
                   </div>
-                </Link>
+                </div>
               );
             })}
           </Card>
