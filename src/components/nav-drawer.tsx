@@ -73,14 +73,16 @@ export function NavDrawer({
             <Home className="h-4 w-4 text-gray-400" />
             Dashboard
           </Link>
-          {items.map(({ href, label, Icon }) => (
+          {items.map(({ href, label, Icon, color }) => (
             <Link
               key={href}
               href={href}
               onClick={() => setOpen(false)}
               className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
             >
-              <Icon className="h-4 w-4 text-gray-400" />
+              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${color.bg} ${color.text}`}>
+                <Icon className="h-4 w-4" />
+              </span>
               {label}
             </Link>
           ))}
