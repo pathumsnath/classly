@@ -14,10 +14,12 @@ export function ClassesTabs({
   classes,
   activeTutors,
   activeSubjects,
+  commissionPercent,
 }: {
   classes: ClassListRow[];
   activeTutors: TutorRow[];
   activeSubjects: SubjectRow[];
+  commissionPercent: number;
 }) {
   const [tab, setTab] = useState<Tab>("classes");
 
@@ -51,7 +53,7 @@ export function ClassesTabs({
       ) : activeSubjects.length === 0 ? (
         <EmptyState message="Add a subject first — a class needs one assigned." />
       ) : (
-        <CreateClassForm tutors={activeTutors} subjects={activeSubjects} />
+        <CreateClassForm tutors={activeTutors} subjects={activeSubjects} commissionPercent={commissionPercent} />
       )}
     </>
   );

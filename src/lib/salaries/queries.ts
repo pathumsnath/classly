@@ -53,25 +53,29 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
 
   const tutorIds = tutorLinks.map((t) => t.tutor_id);
 
-  const [{ data: tutors }, { data: classes }, { data: salaryPayments }, { data: advances }] = await Promise.all([
-    supabase.from("users").select("id, name").in("id", tutorIds),
-    supabase
-      .from("classes")
-      .select("id, subject_id, tutor_id, tutor_payment_model, tutor_payment_value")
-      .eq("institute_id", session.instituteId)
-      .in("tutor_id", tutorIds),
-    supabase
-      .from("salary_payments")
-      .select("tutor_id, amount, status")
-      .eq("institute_id", session.instituteId)
-      .eq("month", month),
-    supabase
-      .from("tutor_advances")
-      .select("id, tutor_id, amount, reason, recorded_at")
-      .eq("institute_id", session.instituteId)
-      .eq("month", month)
-      .in("tutor_id", tutorIds),
-  ]);
+  const [{ data: tutors }, { data: classes }, { data: salaryPayments }, { data: advances }, { data: institute }] =
+    await Promise.all([
+      supabase.from("users").select("id, name").in("id", tutorIds),
+      supabase
+        .from("classes")
+        .select("id, subject_id, tutor_id, tutor_payment_model, tutor_payment_value")
+        .eq("institute_id", session.instituteId)
+        .in("tutor_id", tutorIds),
+      supabase
+        .from("salary_payments")
+        .select("tutor_id, amount, status")
+        .eq("institute_id", session.instituteId)
+        .eq("month", month),
+      supabase
+        .from("tutor_advances")
+        .select("id, tutor_id, amount, reason, recorded_at")
+        .eq("institute_id", session.instituteId)
+        .eq("month", month)
+        .in("tutor_id", tutorIds),
+      supabase.from("institutes").select("revenue_share_commission_percent").eq("id", session.instituteId).single(),
+    ]);
+
+  const revenueShareCommissionPercent = institute?.revenue_share_commission_percent ?? 25;
 
   const subjectNames = await subjectNamesById(
     supabase,
@@ -95,7 +99,12 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
       const tutorClasses = (classes ?? []).filter((c) => c.tutor_id === tutorId);
       const breakdown = await Promise.all(
         tutorClasses.map((c) =>
-          calculateClassSalary(supabase, { ...c, subject: subjectNames.get(c.subject_id) ?? "Unknown" }, month),
+          calculateClassSalary(
+            supabase,
+            { ...c, subject: subjectNames.get(c.subject_id) ?? "Unknown" },
+            month,
+            revenueShareCommissionPercent,
+          ),
         ),
       );
       const total = breakdown.reduce((sum, b) => sum + b.amount, 0);

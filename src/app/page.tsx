@@ -9,6 +9,7 @@ import { getTutorSalary, getTutorIncomeTrend } from "@/lib/salaries/queries";
 import { listTutors, listStudents } from "@/lib/people/queries";
 import { listFees } from "@/lib/fees/queries";
 import { getWalletBalancesForStudents } from "@/lib/wallet/queries";
+import { getRevenueShareCommissionPercent } from "@/lib/institute/queries";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { logout } from "@/lib/auth/actions";
 import { currentMonthInColombo } from "@/lib/time";
@@ -17,6 +18,7 @@ import { Card, EmptyState } from "@/components/card";
 import { AdvanceQuickForm } from "./advance-quick-form";
 import { RecordFeePaymentForm } from "./record-fee-payment-form";
 import { IncomeTrendChart } from "./income-trend-chart";
+import { CommissionRateForm } from "./commission-rate-form";
 
 const BUCKET_STYLES: Record<string, { dot: string; pill: string }> = {
   now: { dot: "bg-green-500", pill: "bg-green-50 text-green-700" },
@@ -209,11 +211,12 @@ export default async function DashboardPage() {
   }
 
   const isOwner = session.role === "owner";
-  const [todaysClasses, activeTutors, allStudents, allFees] = await Promise.all([
+  const [todaysClasses, activeTutors, allStudents, allFees, commissionPercent] = await Promise.all([
     getTodaysClasses(),
     isOwner ? listTutors() : Promise.resolve([]),
     listStudents(),
     listFees(),
+    isOwner ? getRevenueShareCommissionPercent() : Promise.resolve(null),
   ]);
   const navItems = isOwner ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
   const tutorOptions = activeTutors.filter((t) => t.status === "active").map((t) => ({ id: t.id, name: t.name }));
@@ -256,6 +259,12 @@ export default async function DashboardPage() {
         {isOwner && tutorOptions.length > 0 && (
           <section className="px-4 sm:px-6">
             <AdvanceQuickForm tutors={tutorOptions} month={currentMonthInColombo()} />
+          </section>
+        )}
+
+        {isOwner && commissionPercent !== null && (
+          <section className="px-4 sm:px-6">
+            <CommissionRateForm currentPercent={commissionPercent} />
           </section>
         )}
       </div>

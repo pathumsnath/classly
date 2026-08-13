@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { CalendarDays, DoorOpen, Wallet, Users, ClipboardCheck, GraduationCap } from "lucide-react";
 import { getClass, listEnrolledStudents } from "@/lib/classes/queries";
 import { listStudents } from "@/lib/people/queries";
+import { getRevenueShareCommissionPercent } from "@/lib/institute/queries";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { unenrollStudent } from "@/lib/enrollments/actions";
 import { PageShell } from "@/components/page-shell";
@@ -14,7 +15,16 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
   const cls = await getClass(id);
   if (!cls) notFound();
 
-  const [enrolled, allStudents] = await Promise.all([listEnrolledStudents(id), listStudents()]);
+  const [enrolled, allStudents, commissionPercent] = await Promise.all([
+    listEnrolledStudents(id),
+    listStudents(),
+    cls.tutorPaymentModel === "revenue_share" ? getRevenueShareCommissionPercent() : Promise.resolve(null),
+  ]);
+
+  // For revenue_share, the institute-wide commission rate overrides this
+  // class's own stored tutor_payment_value (see calculateClassSalary) —
+  // show the effective share, not the stale per-class number.
+  const tutorPaymentValue = commissionPercent !== null ? 100 - commissionPercent : cls.tutorPaymentValue;
 
   const activeEnrolled = enrolled.filter((e) => e.status === "active");
   const activeEnrolledIds = new Set(activeEnrolled.map((e) => e.id));
@@ -43,7 +53,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
         <p className="flex items-center gap-2">
           <Wallet className="h-4 w-4 shrink-0 text-gray-400" />
           LKR {cls.feeAmount} ({cls.feeType === "monthly_flat" ? "monthly flat" : "per session"}) · tutor:{" "}
-          {cls.tutorPaymentValue} ({cls.tutorPaymentModel.replace("_", " ")})
+          {tutorPaymentValue} ({cls.tutorPaymentModel.replace("_", " ")})
         </p>
       </Card>
 

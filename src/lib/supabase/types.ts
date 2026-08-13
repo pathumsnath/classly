@@ -65,6 +65,7 @@ export interface Database {
           owner_id: string;
           logo_url: string | null;
           onboarding_completed_at: string | null;
+          revenue_share_commission_percent: number;
           created_at: string;
         };
         Insert: {
@@ -74,6 +75,7 @@ export interface Database {
           owner_id: string;
           logo_url?: string | null;
           onboarding_completed_at?: string | null;
+          revenue_share_commission_percent?: number;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["institutes"]["Insert"]>;

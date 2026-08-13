@@ -97,23 +97,33 @@ export interface ClassSalaryBreakdown {
 // FR-7.5 — one class's contribution to its tutor's salary for a month.
 // Share/per-student models are collected-money-based (FR-7.2): the
 // institute never pays out more than it actually took in.
+//
+// `revenueShareCommissionPercent` is the institute-wide commission rate
+// (Settings, owner-only) — it overrides every revenue_share class's own
+// stored tutor_payment_value, so all revenue_share classes share one rate
+// instead of each being negotiated individually. Other models (fixed,
+// per_student, per_session) are unaffected and still use their own
+// tutor_payment_value.
 export async function calculateClassSalary(
   supabase: SupabaseClient,
   cls: { id: string; subject: string; tutor_payment_model: TutorPaymentModel; tutor_payment_value: number },
   month: string,
+  revenueShareCommissionPercent: number,
 ): Promise<ClassSalaryBreakdown> {
   let amount = 0;
   let collected: number | null = null;
   let overdueReceived: number | null = null;
   let outstanding: number | null = null;
+  let value = cls.tutor_payment_value;
 
   switch (cls.tutor_payment_model) {
     case "revenue_share": {
+      value = 100 - revenueShareCommissionPercent;
       const figures = await revenueShareFigures(supabase, cls.id, month);
       collected = figures.collectedThisMonth + figures.overdueReceived;
       overdueReceived = figures.overdueReceived;
       outstanding = figures.outstanding;
-      amount = collected * (cls.tutor_payment_value / 100);
+      amount = collected * (value / 100);
       break;
     }
     case "fixed":
@@ -131,7 +141,7 @@ export async function calculateClassSalary(
     classId: cls.id,
     subject: cls.subject,
     model: cls.tutor_payment_model,
-    value: cls.tutor_payment_value,
+    value,
     amount,
     collectedFees: collected,
     overdueReceived,
