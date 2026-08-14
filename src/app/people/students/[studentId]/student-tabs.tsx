@@ -115,7 +115,7 @@ export function StudentTabs({
         <button
           type="button"
           onClick={() => setTab("enrollments")}
-          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+          className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
             tab === "enrollments" ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-50"
           }`}
         >
@@ -124,7 +124,7 @@ export function StudentTabs({
         <button
           type="button"
           onClick={() => setTab("payments")}
-          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+          className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
             tab === "payments" ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-50"
           }`}
         >

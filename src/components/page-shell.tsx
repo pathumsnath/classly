@@ -24,7 +24,7 @@ export async function PageShell({
             <Link
               href={backHref}
               aria-label="Back"
-              className="rounded-full p-1.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+              className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
             >
               <ArrowLeft className="h-5 w-5" />
             </Link>

@@ -43,7 +43,7 @@ export function PaymentSheet({
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+            className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
           >
             <X className="h-5 w-5" />
           </button>

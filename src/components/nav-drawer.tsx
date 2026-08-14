@@ -25,7 +25,7 @@ export function NavDrawer({
         type="button"
         onClick={() => setOpen(true)}
         aria-label="Open menu"
-        className="rounded-full p-1.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+        className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
       >
         <Menu className="h-5 w-5" />
       </button>
@@ -58,7 +58,7 @@ export function NavDrawer({
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close menu"
-            className="rounded-full p-1.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+            className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
           >
             <X className="h-5 w-5" />
           </button>
@@ -68,7 +68,7 @@ export function NavDrawer({
           <Link
             href="/"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+            className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-gray-700 transition hover:bg-gray-50"
           >
             <Home className="h-4 w-4 text-gray-400" />
             Dashboard
@@ -78,9 +78,9 @@ export function NavDrawer({
               key={href}
               href={href}
               onClick={() => setOpen(false)}
-              className="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-700 transition hover:bg-gray-50"
+              className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-gray-700 transition hover:bg-gray-50"
             >
-              <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full ${color.bg} ${color.text}`}>
+              <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${color.bg} ${color.text}`}>
                 <Icon className="h-4 w-4" />
               </span>
               {label}
@@ -91,7 +91,7 @@ export function NavDrawer({
         <form action={logout} className="border-t border-gray-100 p-3">
           <button
             type="submit"
-            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-red-600 transition hover:bg-red-50"
           >
             <LogOut className="h-4 w-4" />
             Log out

@@ -107,7 +107,10 @@ export default async function TutorSalaryPage({
                   <span className="font-medium text-red-700">− LKR {advance.amount.toFixed(2)}</span>
                   {session.role === "owner" && (
                     <form action={deleteTutorAdvance.bind(null, advance.id, salary.tutorId)}>
-                      <button type="submit" className="text-xs font-medium text-gray-400 hover:text-gray-600">
+                      <button
+                        type="submit"
+                        className="rounded-lg px-2.5 py-1.5 text-xs font-medium text-gray-400 transition hover:bg-gray-100 hover:text-gray-600"
+                      >
                         Remove
                       </button>
                     </form>
@@ -131,7 +134,10 @@ export default async function TutorSalaryPage({
             </p>
             {salary.status !== "paid" && session.role === "owner" && (
               <form action={markSalaryPaid.bind(null, salary.tutorId, month, salary.netTotal)}>
-                <button type="submit" className="text-sm font-medium text-indigo-600">
+                <button
+                  type="submit"
+                  className="rounded-lg px-4 py-2.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
+                >
                   Mark as paid
                 </button>
               </form>

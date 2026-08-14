@@ -24,7 +24,7 @@ export function InviteTutorButton({ tutorId }: { tutorId: string }) {
         type="button"
         onClick={handleClick}
         disabled={pending}
-        className="w-fit text-sm font-medium text-indigo-600 disabled:opacity-50"
+        className="w-fit rounded-lg px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50"
       >
         {pending ? "Sending…" : "Invite to log in"}
       </button>

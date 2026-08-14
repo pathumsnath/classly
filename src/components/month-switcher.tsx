@@ -35,30 +35,33 @@ export function MonthSwitcher({
   currentMonth: string;
 }) {
   return (
-    <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
+    <div className="flex w-fit items-center gap-2 rounded-full border border-gray-100 bg-white px-2 py-2 text-sm shadow-sm">
       <Link
         href={`${basePath}?month=${prevMonth(month)}`}
         aria-label="Previous month"
-        className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+        className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
       >
-        <ChevronLeft className="h-4 w-4" />
+        <ChevronLeft className="h-5 w-5" />
       </Link>
       <span className="font-medium text-gray-900">{formatMonthLabel(month)}</span>
       {month === currentMonth ? (
-        <span className="p-1 text-gray-200">
-          <ChevronRight className="h-4 w-4" />
+        <span className="p-2.5 text-gray-200">
+          <ChevronRight className="h-5 w-5" />
         </span>
       ) : (
         <Link
           href={`${basePath}?month=${nextMonth(month)}`}
           aria-label="Next month"
-          className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+          className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5" />
         </Link>
       )}
       {month !== currentMonth && (
-        <Link href={`${basePath}?month=${currentMonth}`} className="text-xs font-medium text-indigo-600">
+        <Link
+          href={`${basePath}?month=${currentMonth}`}
+          className="rounded-full px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
+        >
           Back to {formatMonthName(currentMonth)}
         </Link>
       )}

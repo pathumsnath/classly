@@ -62,7 +62,10 @@ export default async function StudentFeesPage({
                 </span>
                 {fee.status !== "paid" && fee.status !== "waived" && (
                   <form action={waiveFee.bind(null, fee.id)}>
-                    <button type="submit" className="text-sm font-medium text-gray-500">
+                    <button
+                      type="submit"
+                      className="rounded-lg px-3 py-2 text-sm font-medium text-gray-500 transition hover:bg-gray-100"
+                    >
                       Waive
                     </button>
                   </form>

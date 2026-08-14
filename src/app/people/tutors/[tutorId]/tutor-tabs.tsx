@@ -106,7 +106,7 @@ export function TutorTabs({
         <button
           type="button"
           onClick={() => setTab("classes")}
-          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+          className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
             tab === "classes" ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-50"
           }`}
         >
@@ -115,7 +115,7 @@ export function TutorTabs({
         <button
           type="button"
           onClick={() => setTab("salary")}
-          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+          className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
             tab === "salary" ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-50"
           }`}
         >

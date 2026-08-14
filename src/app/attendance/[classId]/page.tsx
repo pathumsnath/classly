@@ -48,9 +48,9 @@ export default async function AttendancePage({
           <Link
             href={`/attendance/${classId}?month=${addMonths(month, -1)}`}
             aria-label="Previous month"
-            className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+            className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
           >
-            <ChevronLeft className="h-4 w-4" />
+            <ChevronLeft className="h-5 w-5" />
           </Link>
           <span className="font-medium text-gray-900">
             {new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
@@ -62,9 +62,9 @@ export default async function AttendancePage({
           <Link
             href={`/attendance/${classId}?month=${addMonths(month, 1)}`}
             aria-label="Next month"
-            className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+            className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
           >
-            <ChevronRight className="h-4 w-4" />
+            <ChevronRight className="h-5 w-5" />
           </Link>
         </div>
 
@@ -93,9 +93,9 @@ export default async function AttendancePage({
         <Link
           href={`/attendance/${classId}?date=${addDays(date, -1)}`}
           aria-label="Previous day"
-          className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+          className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
         >
-          <ChevronLeft className="h-4 w-4" />
+          <ChevronLeft className="h-5 w-5" />
         </Link>
         <span className="font-medium text-gray-900">{date}</span>
         <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">
@@ -104,9 +104,9 @@ export default async function AttendancePage({
         <Link
           href={`/attendance/${classId}?date=${addDays(date, 1)}`}
           aria-label="Next day"
-          className="rounded-full p-1 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+          className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
         >
-          <ChevronRight className="h-4 w-4" />
+          <ChevronRight className="h-5 w-5" />
         </Link>
       </div>
 
@@ -116,7 +116,10 @@ export default async function AttendancePage({
           message={`This class was cancelled on ${date}.`}
           action={
             <form action={undoCancelClass.bind(null, classId, date)}>
-              <button type="submit" className="text-sm font-medium text-indigo-600">
+              <button
+                type="submit"
+                className="rounded-lg px-4 py-2.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
+              >
                 Undo cancellation
               </button>
             </form>

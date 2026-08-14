@@ -61,7 +61,7 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
         </div>
         <button
           type="submit"
-          className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+          className="rounded-lg border border-gray-200 bg-white px-5 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
         >
           Search
         </button>

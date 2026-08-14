@@ -64,9 +64,9 @@ function TodaysClassesList({ classes, showAddLink }: { classes: TodayClassRow[];
             </div>
             <Link
               href={`/attendance/${cls.id}`}
-              className={`flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold shadow-sm transition ${style.button}`}
+              className={`flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full px-4 py-2 text-sm font-semibold shadow-sm transition ${style.button}`}
             >
-              <ClipboardCheck className="h-3.5 w-3.5" />
+              <ClipboardCheck className="h-4 w-4" />
               {style.label}
             </Link>
           </li>
@@ -103,7 +103,7 @@ export default async function DashboardPage() {
         <button
           type="submit"
           aria-label="Log out"
-          className="rounded-full p-2 text-gray-400 transition hover:bg-gray-50 hover:text-red-600"
+          className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-red-600"
         >
           <LogOut className="h-5 w-5" />
         </button>

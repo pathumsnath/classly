@@ -41,7 +41,7 @@ export function SubmitButton({
     <button
       {...props}
       type="submit"
-      className="rounded-lg bg-indigo-600 px-4 py-2.5 text-base font-semibold text-white shadow-sm transition hover:bg-indigo-500 hover:shadow disabled:opacity-50 disabled:shadow-none"
+      className="min-h-[48px] rounded-lg bg-indigo-600 px-5 py-3.5 text-base font-semibold text-white shadow-sm transition hover:bg-indigo-500 hover:shadow disabled:opacity-50 disabled:shadow-none"
     >
       {children}
     </button>

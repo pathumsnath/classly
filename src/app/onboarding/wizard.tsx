@@ -45,7 +45,11 @@ function StepActions({ pending, submitLabel, onSkip }: { pending: boolean; submi
   return (
     <div className="flex items-center gap-4">
       <SubmitButton disabled={pending}>{submitLabel}</SubmitButton>
-      <button type="button" onClick={onSkip} className="text-sm font-medium text-gray-500">
+      <button
+        type="button"
+        onClick={onSkip}
+        className="rounded-lg px-4 py-2.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100"
+      >
         Skip
       </button>
     </div>
@@ -107,7 +111,11 @@ function ClassStep({
             You skipped adding a tutor, so there&apos;s no one to assign a class to yet — add one from the Tutors
             page later, then come back to Classes.
           </p>
-          <button type="button" onClick={onSkip} className="w-fit text-sm font-medium text-gray-500">
+          <button
+            type="button"
+            onClick={onSkip}
+            className="w-fit rounded-lg px-4 py-2.5 text-sm font-medium text-gray-500 transition hover:bg-gray-100"
+          >
             Skip this step
           </button>
         </div>

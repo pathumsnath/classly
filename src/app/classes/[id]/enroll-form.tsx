@@ -25,7 +25,7 @@ export function EnrollForm({
         <button
           type="button"
           onClick={() => setMode("existing")}
-          className={`rounded-full px-3 py-1.5 font-medium transition ${
+          className={`rounded-full px-4 py-2.5 font-medium transition ${
             mode === "existing" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"
           }`}
         >
@@ -34,7 +34,7 @@ export function EnrollForm({
         <button
           type="button"
           onClick={() => setMode("new")}
-          className={`rounded-full px-3 py-1.5 font-medium transition ${
+          className={`rounded-full px-4 py-2.5 font-medium transition ${
             mode === "new" ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600"
           }`}
         >

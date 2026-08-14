@@ -63,7 +63,7 @@ function AbsenceAlertPanel({ classId, date, absentCount }: { classId: string; da
       type="button"
       onClick={handleSend}
       disabled={sending}
-      className="flex w-fit items-center gap-2 text-sm font-medium text-indigo-600 disabled:opacity-50"
+      className="flex w-fit items-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50 disabled:opacity-50"
     >
       <MessageSquare className="h-4 w-4" />
       {sending ? "Sending…" : "Send absence SMS to parents"}
@@ -129,7 +129,7 @@ export function AttendanceForm({
           <button
             type="button"
             onClick={markAllPresent}
-            className="flex w-fit shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
+            className="flex min-h-[44px] w-fit shrink-0 items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 text-sm font-medium text-gray-700 shadow-sm transition hover:bg-gray-50"
           >
             <CheckCheck className="h-4 w-4" />
             Mark all present
@@ -183,9 +183,9 @@ export function AttendanceForm({
                     <button
                       type="button"
                       onClick={() => toggle(student.enrollmentId)}
-                      className={`flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition ${STATUS_STYLES[status]}`}
+                      className={`flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm font-medium transition ${STATUS_STYLES[status]}`}
                     >
-                      <StatusIcon className="h-3.5 w-3.5" />
+                      <StatusIcon className="h-4 w-4" />
                       {status}
                     </button>
 
@@ -200,7 +200,7 @@ export function AttendanceForm({
                           walletBalance: student.walletBalance,
                         })
                       }
-                      className={`shrink-0 rounded-full px-2 py-1 text-xs font-medium ${feeBadgeClass(student)}`}
+                      className={`flex min-h-[40px] shrink-0 items-center rounded-full px-3 py-2 text-xs font-medium ${feeBadgeClass(student)}`}
                     >
                       {feeBadgeLabel(student)}
                     </button>
@@ -215,7 +215,10 @@ export function AttendanceForm({
       </form>
 
       <form action={markClassCancelled.bind(null, classId, date)} className="mt-4">
-        <button type="submit" className="text-sm font-medium text-red-600">
+        <button
+          type="submit"
+          className="rounded-lg px-4 py-2.5 text-sm font-medium text-red-600 transition hover:bg-red-50"
+        >
           Mark class as cancelled
         </button>
       </form>

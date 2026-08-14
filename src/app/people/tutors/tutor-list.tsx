@@ -43,7 +43,10 @@ export function TutorList({ tutors }: { tutors: TutorRow[] }) {
                 </div>
               </Link>
               <form action={setTutorStatus.bind(null, tutor.id, tutor.status === "active" ? "inactive" : "active")}>
-                <button type="submit" className="text-sm font-medium text-indigo-600">
+                <button
+                  type="submit"
+                  className="rounded-lg px-3 py-2 text-sm font-medium text-indigo-600 transition hover:bg-indigo-50"
+                >
                   {tutor.status === "active" ? "Deactivate" : "Reactivate"}
                 </button>
               </form>

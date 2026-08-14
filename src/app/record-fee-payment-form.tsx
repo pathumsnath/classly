@@ -35,7 +35,7 @@ function StudentPicker({
               setQuery("");
             }}
             aria-label="Change student"
-            className="text-gray-400 hover:text-gray-600"
+            className="rounded-full p-2.5 text-gray-400 hover:bg-gray-50 hover:text-gray-600"
           >
             <X className="h-4 w-4" />
           </button>
@@ -75,7 +75,7 @@ function StudentPicker({
                   onSelect(s.id);
                   setQuery("");
                 }}
-                className="block w-full border-b border-gray-100 bg-white px-3 py-2 text-left text-sm text-gray-900 last:border-b-0 hover:bg-gray-50"
+                className="block w-full border-b border-gray-100 bg-white px-3 py-3 text-left text-sm text-gray-900 last:border-b-0 hover:bg-gray-50"
               >
                 {s.name}
               </button>
