@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSessionInfo } from "@/lib/auth/session";
-import { listClasses } from "@/lib/classes/queries";
+import { listClasses, listWeeklySchedule } from "@/lib/classes/queries";
 import { listTutors } from "@/lib/people/queries";
 import { listSubjects } from "@/lib/subjects/queries";
 import { getRevenueShareCommissionPercent } from "@/lib/institute/queries";
@@ -11,11 +11,12 @@ export default async function ClassesPage() {
   const session = await getSessionInfo();
   if (!session || session.role === "tutor") redirect("/");
 
-  const [classes, tutors, subjects, commissionPercent] = await Promise.all([
+  const [classes, tutors, subjects, commissionPercent, schedule] = await Promise.all([
     listClasses(),
     listTutors(),
     listSubjects(),
     getRevenueShareCommissionPercent(),
+    listWeeklySchedule(),
   ]);
   const activeTutors = tutors.filter((t) => t.status === "active");
   const activeSubjects = subjects.filter((s) => s.status === "active");
@@ -27,6 +28,7 @@ export default async function ClassesPage() {
         activeTutors={activeTutors}
         activeSubjects={activeSubjects}
         commissionPercent={commissionPercent}
+        schedule={schedule}
       />
     </PageShell>
   );

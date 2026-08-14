@@ -342,3 +342,51 @@ export async function listClassesForStudent(studentId: string): Promise<Enrolled
     ];
   });
 }
+
+export interface ScheduleEntry {
+  classId: string;
+  subject: string;
+  tutorName: string;
+  room: string | null;
+  day: string;
+  startTime: string | null;
+  endTime: string | null;
+}
+
+// Every institute class's weekly schedule, one row per (class, day) it
+// meets on — the Classes page's timetable, so free-slot gaps can be
+// computed per room per day.
+export async function listWeeklySchedule(): Promise<ScheduleEntry[]> {
+  const session = await requireSession();
+  const supabase = await createClient();
+
+  const { data: classes } = await supabase
+    .from("classes")
+    .select("id, subject_id, tutor_id, room, schedule_days, schedule_start_time, schedule_end_time")
+    .eq("institute_id", session.instituteId);
+
+  if (!classes || classes.length === 0) return [];
+
+  const [tutorNames, subjectNames] = await Promise.all([
+    tutorNamesById(
+      supabase,
+      classes.map((c) => c.tutor_id),
+    ),
+    subjectNamesById(
+      supabase,
+      classes.map((c) => c.subject_id),
+    ),
+  ]);
+
+  return classes.flatMap((c) =>
+    c.schedule_days.map((day) => ({
+      classId: c.id,
+      subject: subjectNames.get(c.subject_id) ?? "Unknown",
+      tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
+      room: c.room,
+      day,
+      startTime: c.schedule_start_time,
+      endTime: c.schedule_end_time,
+    })),
+  );
+}
