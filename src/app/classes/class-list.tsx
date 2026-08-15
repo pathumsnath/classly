@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react";
 import Link from "next/link";
-import { Search, BookOpen, Users } from "lucide-react";
+import { Search, BookOpen, Users, Pencil } from "lucide-react";
 import { Card, EmptyState } from "@/components/card";
 import { formatGrade, formatMedium, formatTime, GRADE_OPTIONS } from "@/lib/classes/labels";
 import type { GradeLevel } from "@/lib/supabase/types";
@@ -82,12 +82,8 @@ export function ClassList({ classes }: { classes: ClassListRow[] }) {
       ) : (
         <Card className="divide-y divide-gray-100">
           {visibleClasses.map((cls) => (
-            <Link
-              key={cls.id}
-              href={`/classes/${cls.id}`}
-              className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
-            >
-              <div>
+            <div key={cls.id} className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50">
+              <Link href={`/classes/${cls.id}`} className="min-w-0 flex-1">
                 <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-gray-900">
                   {cls.subject} · {formatGrade(cls.grade)}
                   <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
@@ -106,12 +102,21 @@ export function ClassList({ classes }: { classes: ClassListRow[] }) {
                     ? ` · ${formatTime(cls.scheduleStartTime)}${cls.scheduleEndTime ? `–${formatTime(cls.scheduleEndTime)}` : ""}`
                     : ""}
                 </p>
+              </Link>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                  <Users className="h-3.5 w-3.5" />
+                  {cls.studentCount}
+                </span>
+                <Link
+                  href={`/classes/${cls.id}/edit`}
+                  aria-label={`Edit ${cls.subject}`}
+                  className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-100 hover:text-indigo-600"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Link>
               </div>
-              <span className="flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                <Users className="h-3.5 w-3.5" />
-                {cls.studentCount}
-              </span>
-            </Link>
+            </div>
           ))}
         </Card>
       )}
