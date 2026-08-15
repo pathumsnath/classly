@@ -49,7 +49,8 @@ export default async function TutorSalaryPage({
             c.model === "revenue_share" && c.collectedFees !== null ? (
               <li key={c.classId} className="flex flex-col gap-1">
                 <p className="font-medium text-gray-900">
-                  {c.subject} ({c.value}% share)
+                  {c.subject}
+                  {c.groupName && ` (${c.groupName})`} ({c.value}% share)
                 </p>
                 <div className="flex justify-between pl-3">
                   <span>Total income</span>
@@ -81,7 +82,8 @@ export default async function TutorSalaryPage({
             ) : (
               <li key={c.classId} className="flex justify-between">
                 <span>
-                  {c.subject} ({c.model.replace("_", " ")})
+                  {c.subject}
+                  {c.groupName && ` (${c.groupName})`} ({c.model.replace("_", " ")})
                 </span>
                 <span>LKR {c.amount.toFixed(2)}</span>
               </li>

@@ -14,6 +14,7 @@ const WEEKDAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export interface TodayClassRow {
   id: string;
   subject: string;
+  groupName: string | null;
   scheduleStartTime: string | null;
   scheduleEndTime: string | null;
   bucket: "now" | "upcoming" | "done";
@@ -33,7 +34,7 @@ export async function getTodaysClasses(tutorId?: string): Promise<TodayClassRow[
 
   let classesQuery = supabase
     .from("classes")
-    .select("id, subject_id, schedule_start_time, schedule_end_time, schedule_days")
+    .select("id, subject_id, schedule_start_time, schedule_end_time, schedule_days, group_name")
     .eq("institute_id", session.instituteId);
   if (tutorId) classesQuery = classesQuery.eq("tutor_id", tutorId);
 
@@ -72,6 +73,7 @@ export async function getTodaysClasses(tutorId?: string): Promise<TodayClassRow[
       return {
         id: c.id,
         subject: subjectNames.get(c.subject_id) ?? "Unknown",
+        groupName: c.group_name,
         scheduleStartTime: c.schedule_start_time,
         scheduleEndTime: c.schedule_end_time,
         bucket,
@@ -108,6 +110,7 @@ export interface AttendanceStudentRow {
 export interface ClassAttendanceState {
   classId: string;
   subject: string;
+  groupName: string | null;
   date: string;
   isCancelled: boolean;
   students: AttendanceStudentRow[];
@@ -119,7 +122,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
 
   const { data: cls } = await supabase
     .from("classes")
-    .select("id, subject_id, tutor_id")
+    .select("id, subject_id, tutor_id, group_name")
     .eq("id", classId)
     .eq("institute_id", session.instituteId)
     .maybeSingle();
@@ -147,7 +150,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     .eq("status", "active");
 
   if (!enrollments || enrollments.length === 0) {
-    return { classId, subject, date, isCancelled: !!cancellation, students: [] };
+    return { classId, subject, groupName: cls.group_name, date, isCancelled: !!cancellation, students: [] };
   }
 
   const studentIds = enrollments.map((e) => e.student_id);
@@ -204,7 +207,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     };
   });
 
-  return { classId, subject, date, isCancelled: !!cancellation, students: rows };
+  return { classId, subject, groupName: cls.group_name, date, isCancelled: !!cancellation, students: rows };
 }
 
 export interface MonthlyAttendanceStudentRow {
@@ -222,6 +225,7 @@ export interface MonthlyAttendanceStudentRow {
 export interface ClassMonthlyAttendance {
   classId: string;
   subject: string;
+  groupName: string | null;
   month: string;
   // This class's own session dates within the month (from schedule_days),
   // excluding any that were cancelled — the grid's columns.
@@ -242,7 +246,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
 
   const { data: cls } = await supabase
     .from("classes")
-    .select("id, subject_id, tutor_id, schedule_days")
+    .select("id, subject_id, tutor_id, schedule_days, group_name")
     .eq("id", classId)
     .eq("institute_id", session.instituteId)
     .maybeSingle();
@@ -278,7 +282,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     .eq("status", "active");
 
   if (!enrollments || enrollments.length === 0) {
-    return { classId, subject, month, sessionDates, students: [], collectedThisMonth: 0 };
+    return { classId, subject, groupName: cls.group_name, month, sessionDates, students: [], collectedThisMonth: 0 };
   }
 
   const studentIds = enrollments.map((e) => e.student_id);
@@ -347,7 +351,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     };
   });
 
-  return { classId, subject, month, sessionDates, students: rows, collectedThisMonth };
+  return { classId, subject, groupName: cls.group_name, month, sessionDates, students: rows, collectedThisMonth };
 }
 
 export interface AttendanceRecordRow {

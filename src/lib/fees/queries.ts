@@ -14,8 +14,10 @@ export interface FeeRow {
   classId: string;
   subject: string;
   // A student can be enrolled in more than one class with the same
-  // subject name (different tutor, different grade) — the tutor
-  // disambiguates which class a fee actually belongs to.
+  // subject name (different tutor, different grade, or two groups of the
+  // same grade with the same tutor) — tutorName and groupName disambiguate
+  // which class a fee actually belongs to.
+  groupName: string | null;
   tutorName: string;
   month: string;
   amountDue: number;
@@ -50,7 +52,7 @@ async function toFeeRows(
 
   const [{ data: students }, { data: classes }] = await Promise.all([
     supabase.from("users").select("id, name, phone").in("id", studentIds),
-    supabase.from("classes").select("id, subject_id, tutor_id").in("id", classIds),
+    supabase.from("classes").select("id, subject_id, tutor_id, group_name").in("id", classIds),
   ]);
 
   const tutorIds = [...new Set((classes ?? []).map((c) => c.tutor_id))];
@@ -71,6 +73,7 @@ async function toFeeRows(
   const tutorNameByClassId = new Map(
     (classes ?? []).map((c) => [c.id, tutorNameById.get(c.tutor_id) ?? "Unknown"]),
   );
+  const groupNameByClassId = new Map((classes ?? []).map((c) => [c.id, c.group_name]));
 
   const currentMonth = currentMonthInColombo();
 
@@ -84,6 +87,7 @@ async function toFeeRows(
       studentPhone: student?.phone ?? "",
       classId: p.class_id,
       subject: subjectByClassId.get(p.class_id) ?? "Unknown",
+      groupName: groupNameByClassId.get(p.class_id) ?? null,
       tutorName: tutorNameByClassId.get(p.class_id) ?? "Unknown",
       month: p.month,
       amountDue: p.amount_due,

@@ -43,7 +43,10 @@ export default async function AttendancePage({
     if (!monthly) notFound();
 
     return (
-      <PageShell title={monthly.subject} backHref="/">
+      <PageShell
+        title={monthly.groupName ? `${monthly.subject} — ${monthly.groupName}` : monthly.subject}
+        backHref="/"
+      >
         <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
           <Link
             href={`/attendance/${classId}?month=${addMonths(month, -1)}`}
@@ -88,7 +91,7 @@ export default async function AttendancePage({
   if (!state) notFound();
 
   return (
-    <PageShell title={state.subject} backHref="/classes">
+    <PageShell title={state.groupName ? `${state.subject} — ${state.groupName}` : state.subject} backHref="/classes">
       <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
         <Link
           href={`/attendance/${classId}?date=${addDays(date, -1)}`}

@@ -31,7 +31,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
   const availableStudents = allStudents.filter((s) => s.status === "active" && !activeEnrolledIds.has(s.id));
 
   return (
-    <PageShell title={cls.subject} backHref="/classes">
+    <PageShell title={cls.groupName ? `${cls.subject} — ${cls.groupName}` : cls.subject} backHref="/classes">
       <Card className="flex flex-col gap-3 p-5 text-sm text-gray-700">
         <p className="flex items-center gap-2">
           <GraduationCap className="h-4 w-4 shrink-0 text-gray-400" />

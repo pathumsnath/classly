@@ -104,6 +104,11 @@ export function CreateClassForm({
         <Field label="End time" name="scheduleEndTime" type="time" required />
       </div>
       <Field label="Room (optional)" name="room" />
+      <Field
+        label="Group / batch name (optional)"
+        name="groupName"
+        placeholder="e.g. Group 1 — for two classes with the same subject and grade"
+      />
       <Field label="Max students (optional)" name="maxStudents" type="number" min={1} />
       <Field label="Fee amount (LKR)" name="feeAmount" type="number" min={0} step="0.01" required />
 

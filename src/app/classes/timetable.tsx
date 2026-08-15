@@ -84,7 +84,10 @@ export function Timetable({ entries }: { entries: ScheduleEntry[] }) {
                           href={`/classes/${slot.entry.classId}`}
                           className="flex items-center justify-between rounded-lg bg-indigo-50 px-3 py-2 text-sm transition hover:bg-indigo-100"
                         >
-                          <span className="font-medium text-indigo-900">{slot.entry.subject}</span>
+                          <span className="font-medium text-indigo-900">
+                            {slot.entry.subject}
+                            {slot.entry.groupName && ` (${slot.entry.groupName})`}
+                          </span>
                           <span className="text-xs text-indigo-600">
                             {formatTime(slot.entry.startTime!)}–{formatTime(slot.entry.endTime!)} ·{" "}
                             {slot.entry.tutorName}

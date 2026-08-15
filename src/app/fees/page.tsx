@@ -96,7 +96,8 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
               <div>
                 <p className="font-medium text-gray-900">{fee.studentName}</p>
                 <p className="text-sm text-gray-500">
-                  {fee.subject} · {formatMonth(fee.month)} · LKR {fee.balance} due
+                  {fee.subject}
+                  {fee.groupName && ` (${fee.groupName})`} · {formatMonth(fee.month)} · LKR {fee.balance} due
                 </p>
               </div>
               <span

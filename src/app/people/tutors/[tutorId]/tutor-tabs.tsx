@@ -32,7 +32,10 @@ function ClassesList({ classes }: { classes: ClassRow[] }) {
           className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
         >
           <div>
-            <p className="font-medium text-gray-900">{cls.subject}</p>
+            <p className="font-medium text-gray-900">
+              {cls.subject}
+              {cls.groupName && ` (${cls.groupName})`}
+            </p>
             <p className="text-sm text-gray-500">
               {formatGrade(cls.grade)} · {formatMedium(cls.medium)}
             </p>

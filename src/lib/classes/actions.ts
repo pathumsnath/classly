@@ -66,6 +66,7 @@ interface ParsedClassInput {
   feeType: FeeType;
   tutorPaymentModel: TutorPaymentModel;
   tutorPaymentValue: number;
+  groupName: string | null;
 }
 
 function parseClassInput(formData: FormData): ParsedClassInput | { error: string } {
@@ -76,6 +77,7 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
   const scheduleStartTime = String(formData.get("scheduleStartTime") || "") || null;
   const scheduleEndTime = String(formData.get("scheduleEndTime") || "") || null;
   const room = String(formData.get("room") || "").trim() || null;
+  const groupName = String(formData.get("groupName") || "").trim() || null;
   const maxStudentsRaw = String(formData.get("maxStudents") || "").trim();
   const feeAmountRaw = String(formData.get("feeAmount") || "").trim();
   const tutorPaymentModel = String(formData.get("tutorPaymentModel") || "") as TutorPaymentModel;
@@ -119,6 +121,7 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
     feeType: "monthly_flat",
     tutorPaymentModel,
     tutorPaymentValue,
+    groupName,
   };
 }
 
@@ -149,6 +152,7 @@ export async function createClass(_prevState: ActionResult, formData: FormData):
       fee_type: parsed.feeType,
       tutor_payment_model: parsed.tutorPaymentModel,
       tutor_payment_value: parsed.tutorPaymentValue,
+      group_name: parsed.groupName,
     })
     .select("id")
     .single();
@@ -188,6 +192,7 @@ export async function updateClass(_prevState: ActionResult, formData: FormData):
       fee_type: parsed.feeType,
       tutor_payment_model: parsed.tutorPaymentModel,
       tutor_payment_value: parsed.tutorPaymentValue,
+      group_name: parsed.groupName,
     })
     .eq("id", classId)
     .eq("institute_id", session.instituteId);

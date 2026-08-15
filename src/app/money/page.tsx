@@ -88,7 +88,10 @@ export default async function MoneyPage({ searchParams }: { searchParams: Promis
                 href={`/classes/${c.classId}`}
                 className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
               >
-                <span className="font-medium text-gray-900">{c.subject}</span>
+                <span className="font-medium text-gray-900">
+                  {c.subject}
+                  {c.groupName && ` (${c.groupName})`}
+                </span>
                 <span className="text-sm text-gray-600">
                   {c.studentCount} students · LKR {c.collected.toFixed(2)} · {c.collectionRate.toFixed(0)}%
                 </span>

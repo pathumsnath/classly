@@ -143,7 +143,10 @@ export function StudentTabs({
               return (
                 <div key={cls.id} className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50">
                   <Link href={`/people/students/${studentId}/${cls.id}`} className="min-w-0 flex-1">
-                    <p className="font-medium text-gray-900">{cls.subject}</p>
+                    <p className="font-medium text-gray-900">
+                      {cls.subject}
+                      {cls.groupName && ` (${cls.groupName})`}
+                    </p>
                     <p className="text-sm text-gray-500">
                       {formatGrade(cls.grade)} · {formatMedium(cls.medium)} · {cls.tutorName}
                     </p>
@@ -190,7 +193,8 @@ export function StudentTabs({
                 <div key={fee.id} className="flex items-center justify-between gap-4 p-4">
                   <div>
                     <p className="font-medium text-gray-900">
-                      {fee.subject} — {formatMonth(fee.month)}
+                      {fee.subject}
+                      {fee.groupName && ` (${fee.groupName})`} — {formatMonth(fee.month)}
                     </p>
                     <p className="text-sm text-gray-500">
                       Due LKR {fee.amountDue} · Paid LKR {fee.amountPaid} · Balance LKR {fee.balance}

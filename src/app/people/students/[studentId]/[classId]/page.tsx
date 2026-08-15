@@ -28,7 +28,10 @@ export default async function StudentClassDetailPage({
   const sortedFees = [...fees].sort((a, b) => b.month.localeCompare(a.month));
 
   return (
-    <PageShell title={cls.subject} backHref={`/people/students/${studentId}`}>
+    <PageShell
+      title={cls.groupName ? `${cls.subject} — ${cls.groupName}` : cls.subject}
+      backHref={`/people/students/${studentId}`}
+    >
       <p className="-mt-3 text-sm text-gray-500">
         {student.name} · {cls.tutorName}
       </p>

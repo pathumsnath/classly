@@ -176,6 +176,7 @@ export interface Database {
           fee_type: FeeType;
           tutor_payment_model: TutorPaymentModel;
           tutor_payment_value: number;
+          group_name: string | null;
           created_at: string;
         };
         Insert: {
@@ -194,6 +195,7 @@ export interface Database {
           fee_type: FeeType;
           tutor_payment_model: TutorPaymentModel;
           tutor_payment_value: number;
+          group_name?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["classes"]["Insert"]>;

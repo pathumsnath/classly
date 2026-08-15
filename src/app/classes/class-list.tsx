@@ -93,6 +93,11 @@ export function ClassList({ classes }: { classes: ClassListRow[] }) {
                   <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
                     {formatMedium(cls.medium)}
                   </span>
+                  {cls.groupName && (
+                    <span className="rounded-full bg-amber-50 px-2 py-0.5 text-xs font-medium text-amber-700">
+                      {cls.groupName}
+                    </span>
+                  )}
                 </p>
                 <p className="text-sm text-gray-500">{cls.tutorName}</p>
                 <p className="text-sm text-gray-500">

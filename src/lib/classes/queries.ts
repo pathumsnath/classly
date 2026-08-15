@@ -8,6 +8,9 @@ import type { FeeType, TutorPaymentModel, GradeLevel, ClassMedium } from "@/lib/
 export interface ClassRow {
   id: string;
   subject: string;
+  // Distinguishes two otherwise-identical classes (same subject/grade/
+  // tutor) — e.g. two Grade 6 Science groups. Null for the common case.
+  groupName: string | null;
   grade: GradeLevel | null;
   medium: ClassMedium | null;
   tutorName: string;
@@ -125,7 +128,7 @@ export async function listClasses(): Promise<ClassListRow[]> {
   const { data: classes } = await supabase
     .from("classes")
     .select(
-      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type",
+      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type, group_name",
     )
     .eq("institute_id", session.instituteId)
     .order("created_at", { ascending: true });
@@ -150,6 +153,7 @@ export async function listClasses(): Promise<ClassListRow[]> {
   return classes.map((c) => ({
     id: c.id,
     subject: subjectNames.get(c.subject_id) ?? "Unknown",
+    groupName: c.group_name,
     grade: c.grade,
     medium: c.medium,
     tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
@@ -169,7 +173,7 @@ export async function listClassesForTutor(tutorId: string): Promise<TutorClassRo
   const { data: classes } = await supabase
     .from("classes")
     .select(
-      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type",
+      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type, group_name",
     )
     .eq("institute_id", session.instituteId)
     .eq("tutor_id", tutorId)
@@ -203,6 +207,7 @@ export async function listClassesForTutor(tutorId: string): Promise<TutorClassRo
   return classes.map((c) => ({
     id: c.id,
     subject: subjectNames.get(c.subject_id) ?? "Unknown",
+    groupName: c.group_name,
     grade: c.grade,
     medium: c.medium,
     tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
@@ -238,6 +243,7 @@ export async function getClass(classId: string): Promise<ClassDetail | null> {
   return {
     id: cls.id,
     subject: subjectNames.get(cls.subject_id) ?? "Unknown",
+    groupName: cls.group_name,
     subjectId: cls.subject_id,
     grade: cls.grade,
     medium: cls.medium,
@@ -299,7 +305,7 @@ export async function listClassesForStudent(studentId: string): Promise<Enrolled
   const { data: classes } = await supabase
     .from("classes")
     .select(
-      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type",
+      "id, subject_id, grade, medium, tutor_id, schedule_days, schedule_start_time, schedule_end_time, fee_amount, fee_type, group_name",
     )
     .in(
       "id",
@@ -328,6 +334,7 @@ export async function listClassesForStudent(studentId: string): Promise<Enrolled
       {
         id: c.id,
         subject: subjectNames.get(c.subject_id) ?? "Unknown",
+        groupName: c.group_name,
         grade: c.grade,
         medium: c.medium,
         tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
@@ -346,6 +353,7 @@ export async function listClassesForStudent(studentId: string): Promise<Enrolled
 export interface ScheduleEntry {
   classId: string;
   subject: string;
+  groupName: string | null;
   tutorName: string;
   room: string | null;
   day: string;
@@ -362,7 +370,7 @@ export async function listWeeklySchedule(): Promise<ScheduleEntry[]> {
 
   const { data: classes } = await supabase
     .from("classes")
-    .select("id, subject_id, tutor_id, room, schedule_days, schedule_start_time, schedule_end_time")
+    .select("id, subject_id, tutor_id, room, schedule_days, schedule_start_time, schedule_end_time, group_name")
     .eq("institute_id", session.instituteId);
 
   if (!classes || classes.length === 0) return [];
@@ -382,6 +390,7 @@ export async function listWeeklySchedule(): Promise<ScheduleEntry[]> {
     c.schedule_days.map((day) => ({
       classId: c.id,
       subject: subjectNames.get(c.subject_id) ?? "Unknown",
+      groupName: c.group_name,
       tutorName: tutorNames.get(c.tutor_id) ?? "Unknown",
       room: c.room,
       day,

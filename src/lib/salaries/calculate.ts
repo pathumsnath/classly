@@ -76,6 +76,7 @@ async function sessionsHeld(supabase: SupabaseClient, classId: string, month: st
 export interface ClassSalaryBreakdown {
   classId: string;
   subject: string;
+  groupName: string | null;
   model: TutorPaymentModel;
   value: number;
   amount: number;
@@ -106,7 +107,13 @@ export interface ClassSalaryBreakdown {
 // tutor_payment_value.
 export async function calculateClassSalary(
   supabase: SupabaseClient,
-  cls: { id: string; subject: string; tutor_payment_model: TutorPaymentModel; tutor_payment_value: number },
+  cls: {
+    id: string;
+    subject: string;
+    groupName: string | null;
+    tutor_payment_model: TutorPaymentModel;
+    tutor_payment_value: number;
+  },
   month: string,
   revenueShareCommissionPercent: number,
 ): Promise<ClassSalaryBreakdown> {
@@ -140,6 +147,7 @@ export async function calculateClassSalary(
   return {
     classId: cls.id,
     subject: cls.subject,
+    groupName: cls.groupName,
     model: cls.tutor_payment_model,
     value,
     amount,

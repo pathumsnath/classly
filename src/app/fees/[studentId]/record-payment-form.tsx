@@ -30,7 +30,8 @@ export function RecordPaymentForm({ fees, walletBalance }: { fees: FeeRow[]; wal
               className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
             />
             <span className="flex-1">
-              {fee.subject} ({fee.tutorName}) — {fee.month.slice(0, 7)}
+              {fee.subject}
+              {fee.groupName && ` (${fee.groupName})`} ({fee.tutorName}) — {fee.month.slice(0, 7)}
             </span>
             <input
               type="number"

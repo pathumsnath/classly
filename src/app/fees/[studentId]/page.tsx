@@ -48,7 +48,8 @@ export default async function StudentFeesPage({
             <div key={fee.id} className="flex items-center justify-between gap-4 p-4">
               <div>
                 <p className="font-medium text-gray-900">
-                  {fee.subject} — {fee.month.slice(0, 7)}
+                  {fee.subject}
+                  {fee.groupName && ` (${fee.groupName})`} — {fee.month.slice(0, 7)}
                 </p>
                 <p className="text-sm text-gray-500">
                   Due LKR {fee.amountDue} · Paid LKR {fee.amountPaid} · Balance LKR {fee.balance}

@@ -9,6 +9,7 @@ import { subjectNamesById } from "@/lib/subjects/queries";
 export interface ClassMoneySummary {
   classId: string;
   subject: string;
+  groupName: string | null;
   studentCount: number;
   collected: number;
   collectionRate: number;
@@ -78,19 +79,21 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
 
   const classIds = [...byClass.keys()];
   const { data: classes } = classIds.length
-    ? await supabase.from("classes").select("id, subject_id").in("id", classIds)
+    ? await supabase.from("classes").select("id, subject_id, group_name").in("id", classIds)
     : { data: [] };
   const subjectNames = await subjectNamesById(
     supabase,
     (classes ?? []).map((c) => c.subject_id),
   );
   const subjectById = new Map((classes ?? []).map((c) => [c.id, subjectNames.get(c.subject_id) ?? "Unknown"]));
+  const groupNameById = new Map((classes ?? []).map((c) => [c.id, c.group_name]));
 
   const perClass: ClassMoneySummary[] = classIds.map((classId) => {
     const entry = byClass.get(classId)!;
     return {
       classId,
       subject: subjectById.get(classId) ?? "Unknown",
+      groupName: groupNameById.get(classId) ?? null,
       studentCount: entry.students.size,
       collected: entry.paid,
       collectionRate: entry.due > 0 ? (entry.paid / entry.due) * 100 : 0,
