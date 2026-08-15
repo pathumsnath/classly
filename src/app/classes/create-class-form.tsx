@@ -1,11 +1,10 @@
 "use client";
 
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClass } from "@/lib/classes/actions";
 import { GRADE_OPTIONS, MEDIUM_OPTIONS } from "@/lib/classes/labels";
 import { Field, FormError, Select, SubmitButton } from "@/components/form";
-import type { TutorPaymentModel } from "@/lib/supabase/types";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
@@ -17,8 +16,8 @@ export function CreateClassForm({
 }: {
   tutors: { id: string; name: string }[];
   subjects: { id: string; name: string }[];
-  // Revenue-share classes don't take their own %, an institute-wide rate
-  // (set from the dashboard) overrides every class — see calculateClassSalary.
+  // Every class is revenue_share — the institute-wide rate (set from the
+  // dashboard) is the tutor's cut, so there's nothing to pick per class.
   commissionPercent: number;
   // Defaults to navigating to the new class's detail page. The onboarding
   // wizard overrides this to advance to the next step instead.
@@ -26,7 +25,6 @@ export function CreateClassForm({
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(createClass, {});
-  const [paymentModel, setPaymentModel] = useState<TutorPaymentModel>("fixed");
 
   useEffect(() => {
     if (state.success && state.classId) {
@@ -114,30 +112,12 @@ export function CreateClassForm({
         <option value="per_session">Per session</option>
       </Select>
 
-      <Select
-        label="Tutor payment model"
-        name="tutorPaymentModel"
-        required
-        value={paymentModel}
-        onChange={(e) => setPaymentModel(e.target.value as TutorPaymentModel)}
-      >
-        <option value="revenue_share">Revenue share (%)</option>
-        <option value="fixed">Fixed salary (LKR)</option>
-        <option value="per_student">Per paid student (LKR)</option>
-        <option value="per_session">Per session held (LKR)</option>
-      </Select>
-
-      {paymentModel === "revenue_share" ? (
-        <>
-          <input type="hidden" name="tutorPaymentValue" value={100 - commissionPercent} />
-          <p className="-mt-2 text-xs text-gray-500">
-            Uses the institute-wide commission rate ({commissionPercent}% institute / {100 - commissionPercent}%
-            tutor) — change it from the dashboard.
-          </p>
-        </>
-      ) : (
-        <Field label="Tutor payment value" name="tutorPaymentValue" type="number" min={0} step="0.01" required />
-      )}
+      <input type="hidden" name="tutorPaymentModel" value="revenue_share" />
+      <input type="hidden" name="tutorPaymentValue" value={100 - commissionPercent} />
+      <p className="-mt-2 text-xs text-gray-500">
+        Tutor is paid {100 - commissionPercent}% of collected fees (institute keeps {commissionPercent}%) — the
+        institute-wide rate, changeable from the dashboard.
+      </p>
 
       <FormError message={state.error} />
       <SubmitButton disabled={pending}>{pending ? "Creating…" : "Create class"}</SubmitButton>
