@@ -13,6 +13,10 @@ export interface FeeRow {
   studentPhone: string;
   classId: string;
   subject: string;
+  // A student can be enrolled in more than one class with the same
+  // subject name (different tutor, different grade) — the tutor
+  // disambiguates which class a fee actually belongs to.
+  tutorName: string;
   month: string;
   amountDue: number;
   amountPaid: number;
@@ -46,17 +50,26 @@ async function toFeeRows(
 
   const [{ data: students }, { data: classes }] = await Promise.all([
     supabase.from("users").select("id, name, phone").in("id", studentIds),
-    supabase.from("classes").select("id, subject_id").in("id", classIds),
+    supabase.from("classes").select("id, subject_id, tutor_id").in("id", classIds),
   ]);
 
-  const subjectNames = await subjectNamesById(
-    supabase,
-    (classes ?? []).map((c) => c.subject_id),
-  );
+  const tutorIds = [...new Set((classes ?? []).map((c) => c.tutor_id))];
+
+  const [subjectNames, { data: tutors }] = await Promise.all([
+    subjectNamesById(
+      supabase,
+      (classes ?? []).map((c) => c.subject_id),
+    ),
+    supabase.from("users").select("id, name").in("id", tutorIds),
+  ]);
 
   const studentById = new Map((students ?? []).map((s) => [s.id, s]));
+  const tutorNameById = new Map((tutors ?? []).map((t) => [t.id, t.name]));
   const subjectByClassId = new Map(
     (classes ?? []).map((c) => [c.id, subjectNames.get(c.subject_id) ?? "Unknown"]),
+  );
+  const tutorNameByClassId = new Map(
+    (classes ?? []).map((c) => [c.id, tutorNameById.get(c.tutor_id) ?? "Unknown"]),
   );
 
   const currentMonth = currentMonthInColombo();
@@ -71,6 +84,7 @@ async function toFeeRows(
       studentPhone: student?.phone ?? "",
       classId: p.class_id,
       subject: subjectByClassId.get(p.class_id) ?? "Unknown",
+      tutorName: tutorNameByClassId.get(p.class_id) ?? "Unknown",
       month: p.month,
       amountDue: p.amount_due,
       amountPaid: p.amount_paid,
