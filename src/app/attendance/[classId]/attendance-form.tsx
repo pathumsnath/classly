@@ -104,6 +104,8 @@ export function AttendanceForm({
     setStatuses((prev) => ({ ...prev, [enrollmentId]: CYCLE[prev[enrollmentId]] }));
   }
 
+  const presentCount = Object.values(statuses).filter((s) => s === "present").length;
+
   if (state.success) {
     const counts = { present: 0, absent: 0, late: 0 };
     for (const status of Object.values(statuses)) counts[status]++;
@@ -124,6 +126,10 @@ export function AttendanceForm({
       <form id={ATTENDANCE_FORM_ID} action={formAction} className="flex flex-col gap-4">
         <input type="hidden" name="classId" value={classId} />
         <input type="hidden" name="date" value={date} />
+
+        <p className="text-sm font-medium text-gray-700">
+          <span className="text-gray-900">{presentCount}</span> of {students.length} present
+        </p>
 
         <div className="flex items-center gap-2">
           <button
