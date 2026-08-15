@@ -5,7 +5,7 @@ import { colomboNow, todayInColombo, currentMonthInColombo } from "@/lib/time";
 import { subjectNamesById } from "@/lib/subjects/queries";
 import { getWalletBalancesByStudent } from "@/lib/wallet/queries";
 import { isOverdue } from "@/lib/fees/status";
-import type { AttendanceStatus } from "@/lib/supabase/types";
+import type { AttendanceStatus, GradeLevel } from "@/lib/supabase/types";
 
 export { todayInColombo };
 
@@ -15,6 +15,11 @@ export interface TodayClassRow {
   id: string;
   subject: string;
   groupName: string | null;
+  grade: GradeLevel | null;
+  // Redundant on the tutor's own dashboard (always themselves) but
+  // needed institute-wide, where "today's classes" spans every tutor —
+  // one component renders both, so this is always populated.
+  tutorName: string;
   scheduleStartTime: string | null;
   scheduleEndTime: string | null;
   bucket: "now" | "upcoming" | "done";
@@ -34,7 +39,7 @@ export async function getTodaysClasses(tutorId?: string): Promise<TodayClassRow[
 
   let classesQuery = supabase
     .from("classes")
-    .select("id, subject_id, schedule_start_time, schedule_end_time, schedule_days, group_name")
+    .select("id, subject_id, tutor_id, grade, schedule_start_time, schedule_end_time, schedule_days, group_name")
     .eq("institute_id", session.instituteId);
   if (tutorId) classesQuery = classesQuery.eq("tutor_id", tutorId);
 
@@ -44,15 +49,19 @@ export async function getTodaysClasses(tutorId?: string): Promise<TodayClassRow[
   if (todays.length === 0) return [];
 
   const classIds = todays.map((c) => c.id);
+  const tutorIds = [...new Set(todays.map((c) => c.tutor_id))];
 
-  const [{ data: cancellations }, { data: attendanceRows }, subjectNames] = await Promise.all([
+  const [{ data: cancellations }, { data: attendanceRows }, subjectNames, { data: tutors }] = await Promise.all([
     supabase.from("class_cancellations").select("class_id").eq("date", date).in("class_id", classIds),
     supabase.from("attendance").select("class_id").eq("date", date).in("class_id", classIds),
     subjectNamesById(
       supabase,
       todays.map((c) => c.subject_id),
     ),
+    supabase.from("users").select("id, name").in("id", tutorIds),
   ]);
+
+  const tutorNameById = new Map((tutors ?? []).map((t) => [t.id, t.name]));
 
   const doneSet = new Set([
     ...(cancellations ?? []).map((c) => c.class_id),
@@ -74,6 +83,8 @@ export async function getTodaysClasses(tutorId?: string): Promise<TodayClassRow[
         id: c.id,
         subject: subjectNames.get(c.subject_id) ?? "Unknown",
         groupName: c.group_name,
+        grade: c.grade,
+        tutorName: tutorNameById.get(c.tutor_id) ?? "Unknown",
         scheduleStartTime: c.schedule_start_time,
         scheduleEndTime: c.schedule_end_time,
         bucket,

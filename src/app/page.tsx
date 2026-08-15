@@ -57,12 +57,16 @@ function TodaysClassesList({ classes, showAddLink }: { classes: TodayClassRow[];
                   {cls.subject}
                   {cls.groupName && ` (${cls.groupName})`}
                 </p>
-                {cls.scheduleStartTime && (
-                  <p className="text-xs text-gray-500">
-                    {formatTime(cls.scheduleStartTime)}
-                    {cls.scheduleEndTime ? `–${formatTime(cls.scheduleEndTime)}` : ""}
-                  </p>
-                )}
+                <p className="text-xs text-gray-500">
+                  {cls.tutorName} · {formatGrade(cls.grade)}
+                  {cls.scheduleStartTime && (
+                    <>
+                      {" · "}
+                      {formatTime(cls.scheduleStartTime)}
+                      {cls.scheduleEndTime ? `–${formatTime(cls.scheduleEndTime)}` : ""}
+                    </>
+                  )}
+                </p>
               </div>
             </div>
             <Link
