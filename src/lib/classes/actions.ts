@@ -14,7 +14,6 @@ export interface ActionResult {
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
-const FEE_TYPES: FeeType[] = ["monthly_flat", "per_session"];
 const PAYMENT_MODELS: TutorPaymentModel[] = ["revenue_share", "fixed", "per_student", "per_session"];
 const GRADES = GRADE_OPTIONS.map((g) => g.value);
 const MEDIUMS = MEDIUM_OPTIONS.map((m) => m.value);
@@ -79,7 +78,6 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
   const room = String(formData.get("room") || "").trim() || null;
   const maxStudentsRaw = String(formData.get("maxStudents") || "").trim();
   const feeAmountRaw = String(formData.get("feeAmount") || "").trim();
-  const feeType = String(formData.get("feeType") || "") as FeeType;
   const tutorPaymentModel = String(formData.get("tutorPaymentModel") || "") as TutorPaymentModel;
   const tutorPaymentValueRaw = String(formData.get("tutorPaymentValue") || "").trim();
 
@@ -94,7 +92,6 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
   if (!feeAmountRaw || Number.isNaN(feeAmount) || feeAmount < 0) {
     return { error: "A valid fee amount is required." };
   }
-  if (!FEE_TYPES.includes(feeType)) return { error: "Select a fee type." };
   if (!PAYMENT_MODELS.includes(tutorPaymentModel)) return { error: "Select a tutor payment model." };
 
   const tutorPaymentValue = Number(tutorPaymentValueRaw);
@@ -117,7 +114,9 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
     room,
     maxStudents,
     feeAmount,
-    feeType,
+    // Per-session proration was never built — every class bills the flat
+    // fee amount monthly regardless, so this is no longer a real choice.
+    feeType: "monthly_flat",
     tutorPaymentModel,
     tutorPaymentValue,
   };

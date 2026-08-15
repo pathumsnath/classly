@@ -107,11 +107,6 @@ export function CreateClassForm({
       <Field label="Max students (optional)" name="maxStudents" type="number" min={1} />
       <Field label="Fee amount (LKR)" name="feeAmount" type="number" min={0} step="0.01" required />
 
-      <Select label="Fee type" name="feeType" required defaultValue="monthly_flat">
-        <option value="monthly_flat">Monthly flat</option>
-        <option value="per_session">Per session</option>
-      </Select>
-
       <input type="hidden" name="tutorPaymentModel" value="revenue_share" />
       <input type="hidden" name="tutorPaymentValue" value={100 - commissionPercent} />
       <p className="-mt-2 text-xs text-gray-500">

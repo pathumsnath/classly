@@ -88,10 +88,12 @@ function TutorStep({
 
 function ClassStep({
   tutors,
+  commissionPercent,
   onNext,
   onSkip,
 }: {
   tutors: { id: string; name: string }[];
+  commissionPercent: number;
   onNext: () => void;
   onSkip: () => void;
 }) {
@@ -179,19 +181,12 @@ function ClassStep({
         </div>
         <Field label="Fee amount (LKR)" name="feeAmount" type="number" min={0} step="0.01" required />
 
-        <Select label="Fee type" name="feeType" required defaultValue="monthly_flat">
-          <option value="monthly_flat">Monthly flat</option>
-          <option value="per_session">Per session</option>
-        </Select>
-
-        <Select label="Tutor payment model" name="tutorPaymentModel" required defaultValue="fixed">
-          <option value="revenue_share">Revenue share (%)</option>
-          <option value="fixed">Fixed salary (LKR)</option>
-          <option value="per_student">Per paid student (LKR)</option>
-          <option value="per_session">Per session held (LKR)</option>
-        </Select>
-
-        <Field label="Tutor payment value" name="tutorPaymentValue" type="number" min={0} step="0.01" required />
+        <input type="hidden" name="tutorPaymentModel" value="revenue_share" />
+        <input type="hidden" name="tutorPaymentValue" value={100 - commissionPercent} />
+        <p className="-mt-2 text-xs text-gray-500">
+          Tutor is paid {100 - commissionPercent}% of collected fees (institute keeps {commissionPercent}%) — the
+          institute-wide rate, changeable from the dashboard.
+        </p>
 
         <FormError message={state.error} />
         <StepActions pending={pending} submitLabel={pending ? "Creating…" : "Create class"} onSkip={onSkip} />
@@ -222,7 +217,13 @@ function StudentStep({ onNext, onSkip }: { onNext: () => void; onSkip: () => voi
   );
 }
 
-export function OnboardingWizard({ initialTutors }: { initialTutors: { id: string; name: string }[] }) {
+export function OnboardingWizard({
+  initialTutors,
+  commissionPercent,
+}: {
+  initialTutors: { id: string; name: string }[];
+  commissionPercent: number;
+}) {
   const router = useRouter();
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [tutors, setTutors] = useState(initialTutors);
@@ -244,7 +245,14 @@ export function OnboardingWizard({ initialTutors }: { initialTutors: { id: strin
           onSkip={() => setStep(2)}
         />
       )}
-      {step === 2 && <ClassStep tutors={tutors} onNext={() => setStep(3)} onSkip={() => setStep(3)} />}
+      {step === 2 && (
+        <ClassStep
+          tutors={tutors}
+          commissionPercent={commissionPercent}
+          onNext={() => setStep(3)}
+          onSkip={() => setStep(3)}
+        />
+      )}
       {step === 3 && <StudentStep onNext={finish} onSkip={finish} />}
     </div>
   );

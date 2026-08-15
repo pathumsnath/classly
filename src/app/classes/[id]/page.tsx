@@ -52,8 +52,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
         )}
         <p className="flex items-center gap-2">
           <Wallet className="h-4 w-4 shrink-0 text-gray-400" />
-          LKR {cls.feeAmount} ({cls.feeType === "monthly_flat" ? "monthly flat" : "per session"}) · tutor:{" "}
-          {tutorPaymentValue} ({cls.tutorPaymentModel.replace("_", " ")})
+          LKR {cls.feeAmount}/month · tutor: {tutorPaymentValue}% share
         </p>
       </Card>
 
