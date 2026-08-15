@@ -22,20 +22,47 @@ function addMonths(month: string, delta: number): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
+function ViewTabs({ classId, active }: { classId: string; active: "day" | "monthly" }) {
+  return (
+    <div className="flex w-fit gap-1 rounded-full border border-gray-100 bg-white p-1 shadow-sm">
+      <Link
+        href={`/attendance/${classId}`}
+        className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
+          active === "day" ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        Mark attendance
+      </Link>
+      <Link
+        href={`/attendance/${classId}?view=monthly`}
+        className={`rounded-full px-4 py-2.5 text-sm font-medium transition ${
+          active === "monthly" ? "bg-indigo-600 text-white" : "text-gray-600 hover:bg-gray-50"
+        }`}
+      >
+        Monthly view
+      </Link>
+    </div>
+  );
+}
+
 export default async function AttendancePage({
   params,
   searchParams,
 }: {
   params: Promise<{ classId: string }>;
-  searchParams: Promise<{ date?: string; month?: string }>;
+  searchParams: Promise<{ date?: string; month?: string; view?: string }>;
 }) {
   const { classId } = await params;
   const session = await getSessionInfo();
-  const readOnly = session?.role === "tutor";
+  const isTutor = session?.role === "tutor";
+  const { view } = await searchParams;
 
-  // Tutors get a whole month of attendance at once (reviewing history),
-  // not a day at a time (which is for marking it live).
-  if (readOnly) {
+  // Tutors only ever get the whole-month read-only review (marking is the
+  // owner/admin_staff's job) — everyone else can switch between marking a
+  // specific day and reviewing the same monthly grid tutors see.
+  const showMonthly = isTutor || view === "monthly";
+
+  if (showMonthly) {
     const { month: monthParam } = await searchParams;
     const month = monthParam || currentMonthInColombo();
 
@@ -45,11 +72,13 @@ export default async function AttendancePage({
     return (
       <PageShell
         title={monthly.groupName ? `${monthly.subject} — ${monthly.groupName}` : monthly.subject}
-        backHref="/"
+        backHref={isTutor ? "/" : "/classes"}
       >
+        {!isTutor && <ViewTabs classId={classId} active="monthly" />}
+
         <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
           <Link
-            href={`/attendance/${classId}?month=${addMonths(month, -1)}`}
+            href={`/attendance/${classId}?view=monthly&month=${addMonths(month, -1)}`}
             aria-label="Previous month"
             className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
           >
@@ -63,7 +92,7 @@ export default async function AttendancePage({
             })}
           </span>
           <Link
-            href={`/attendance/${classId}?month=${addMonths(month, 1)}`}
+            href={`/attendance/${classId}?view=monthly&month=${addMonths(month, 1)}`}
             aria-label="Next month"
             className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
           >
@@ -92,6 +121,8 @@ export default async function AttendancePage({
 
   return (
     <PageShell title={state.groupName ? `${state.subject} — ${state.groupName}` : state.subject} backHref="/classes">
+      <ViewTabs classId={classId} active="day" />
+
       <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
         <Link
           href={`/attendance/${classId}?date=${addDays(date, -1)}`}
