@@ -9,10 +9,12 @@ import type { AttendanceStatus } from "@/lib/supabase/types";
 import type { AttendanceStudentRow, OutstandingPayment } from "@/lib/attendance/queries";
 import { PaymentSheet } from "./payment-sheet";
 
+// Starts from absent (the default) so a single tap does the most common
+// thing — mark present. A second tap (rarer) marks late; a third resets.
 const CYCLE: Record<AttendanceStatus, AttendanceStatus> = {
-  present: "absent",
-  absent: "late",
-  late: "present",
+  absent: "present",
+  present: "late",
+  late: "absent",
 };
 
 const STATUS_ICONS = { present: CheckCircle2, absent: XCircle, late: Clock } as const;
@@ -80,8 +82,10 @@ export function AttendanceForm({
   date: string;
   students: AttendanceStudentRow[];
 }) {
+  // Defaults to absent so a tutor actively marks who showed up, rather
+  // than starting everyone present and having to catch the absentees.
   const [statuses, setStatuses] = useState<Record<string, AttendanceStatus>>(() =>
-    Object.fromEntries(students.map((s) => [s.enrollmentId, s.status ?? "present"])),
+    Object.fromEntries(students.map((s) => [s.enrollmentId, s.status ?? "absent"])),
   );
   const [state, formAction, pending] = useActionState(submitAttendance, {});
   const [openPayment, setOpenPayment] = useState<{
