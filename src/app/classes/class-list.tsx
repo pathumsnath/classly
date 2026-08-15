@@ -50,10 +50,13 @@ export function ClassList({ classes }: { classes: ClassListRow[] }) {
                 </p>
                 <p className="text-sm text-gray-500">
                   {cls.tutorName} · {cls.scheduleDays.join(", ") || "no schedule set"}
-                  {cls.scheduleStartTime
-                    ? ` · ${cls.scheduleStartTime}${cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}`
-                    : ""}
                 </p>
+                {cls.scheduleStartTime && (
+                  <p className="text-sm text-gray-500">
+                    {cls.scheduleStartTime}
+                    {cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}
+                  </p>
+                )}
               </div>
               <span className="flex shrink-0 items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
                 <Users className="h-3.5 w-3.5" />

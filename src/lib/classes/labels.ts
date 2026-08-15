@@ -20,5 +20,6 @@ export function formatGrade(grade: GradeLevel | null): string {
 }
 
 export function formatMedium(medium: ClassMedium | null): string {
-  return MEDIUM_OPTIONS.find((m) => m.value === medium)?.label ?? "—";
+  const label = MEDIUM_OPTIONS.find((m) => m.value === medium)?.label;
+  return label ? `${label} medium` : "—";
 }
