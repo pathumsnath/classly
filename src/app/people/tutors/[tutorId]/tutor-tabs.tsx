@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { BookOpen, Wallet } from "lucide-react";
 import { Card, EmptyState } from "@/components/card";
-import { formatGrade, formatMedium } from "@/lib/classes/labels";
+import { formatGrade, formatMedium, formatTime } from "@/lib/classes/labels";
 import type { ClassRow } from "@/lib/classes/queries";
 import type { SalaryPaymentRow } from "@/lib/salaries/queries";
 
@@ -38,7 +38,7 @@ function ClassesList({ classes }: { classes: ClassRow[] }) {
             </p>
             <p className="text-sm text-gray-400">
               {cls.scheduleDays.join(", ")}
-              {cls.scheduleStartTime ? ` · ${cls.scheduleStartTime}` : ""}
+              {cls.scheduleStartTime ? ` · ${formatTime(cls.scheduleStartTime)}` : ""}
             </p>
           </div>
           <span className="shrink-0 text-sm text-gray-500">LKR {cls.feeAmount}</span>

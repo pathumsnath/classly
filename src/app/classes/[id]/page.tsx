@@ -4,7 +4,7 @@ import { CalendarDays, DoorOpen, Wallet, Users, ClipboardCheck, GraduationCap } 
 import { getClass, listEnrolledStudents } from "@/lib/classes/queries";
 import { listStudents } from "@/lib/people/queries";
 import { getRevenueShareCommissionPercent } from "@/lib/institute/queries";
-import { formatGrade, formatMedium } from "@/lib/classes/labels";
+import { formatGrade, formatMedium, formatTime } from "@/lib/classes/labels";
 import { unenrollStudent } from "@/lib/enrollments/actions";
 import { PageShell } from "@/components/page-shell";
 import { Card, EmptyState, Avatar } from "@/components/card";
@@ -41,7 +41,7 @@ export default async function ClassDetailPage({ params }: { params: Promise<{ id
           <CalendarDays className="h-4 w-4 shrink-0 text-gray-400" />
           {cls.tutorName} · {cls.scheduleDays.join(", ") || "no schedule"}
           {cls.scheduleStartTime
-            ? ` at ${cls.scheduleStartTime}${cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}`
+            ? ` at ${formatTime(cls.scheduleStartTime)}${cls.scheduleEndTime ? `–${formatTime(cls.scheduleEndTime)}` : ""}`
             : ""}
         </p>
         {cls.room && (

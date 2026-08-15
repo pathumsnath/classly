@@ -10,7 +10,7 @@ import { listTutors, listStudents } from "@/lib/people/queries";
 import { listFees } from "@/lib/fees/queries";
 import { getWalletBalancesForStudents } from "@/lib/wallet/queries";
 import { getRevenueShareCommissionPercent } from "@/lib/institute/queries";
-import { formatGrade, formatMedium } from "@/lib/classes/labels";
+import { formatGrade, formatMedium, formatTime } from "@/lib/classes/labels";
 import { logout } from "@/lib/auth/actions";
 import { currentMonthInColombo } from "@/lib/time";
 import { NAV_ITEMS, OWNER_NAV_ITEMS } from "@/lib/nav-items";
@@ -56,8 +56,8 @@ function TodaysClassesList({ classes, showAddLink }: { classes: TodayClassRow[];
                 <p className="font-medium text-gray-900">{cls.subject}</p>
                 {cls.scheduleStartTime && (
                   <p className="text-xs text-gray-500">
-                    {cls.scheduleStartTime}
-                    {cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}
+                    {formatTime(cls.scheduleStartTime)}
+                    {cls.scheduleEndTime ? `–${formatTime(cls.scheduleEndTime)}` : ""}
                   </p>
                 )}
               </div>
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
                       </p>
                       <p className="text-sm text-gray-400">
                         {cls.scheduleDays.join(", ") || "no schedule set"}
-                        {cls.scheduleStartTime ? ` · ${cls.scheduleStartTime}` : ""}
+                        {cls.scheduleStartTime ? ` · ${formatTime(cls.scheduleStartTime)}` : ""}
                       </p>
                       <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
                         LKR {cls.collectedThisMonth.toLocaleString()} collected this month

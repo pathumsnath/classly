@@ -23,3 +23,9 @@ export function formatMedium(medium: ClassMedium | null): string {
   const label = MEDIUM_OPTIONS.find((m) => m.value === medium)?.label;
   return label ? `${label} medium` : "—";
 }
+
+// Schedule times come back from Postgres as "HH:MM:SS" — trim the
+// seconds, which are never set meaningfully for a class's schedule.
+export function formatTime(time: string | null): string {
+  return time ? time.slice(0, 5) : "";
+}

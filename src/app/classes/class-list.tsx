@@ -4,7 +4,7 @@ import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Search, BookOpen, Users } from "lucide-react";
 import { Card, EmptyState } from "@/components/card";
-import { formatGrade, formatMedium, GRADE_OPTIONS } from "@/lib/classes/labels";
+import { formatGrade, formatMedium, formatTime, GRADE_OPTIONS } from "@/lib/classes/labels";
 import type { GradeLevel } from "@/lib/supabase/types";
 import type { ClassListRow } from "@/lib/classes/queries";
 
@@ -98,7 +98,7 @@ export function ClassList({ classes }: { classes: ClassListRow[] }) {
                 <p className="text-sm text-gray-500">
                   {cls.scheduleDays.join(", ") || "no schedule set"}
                   {cls.scheduleStartTime
-                    ? ` · ${cls.scheduleStartTime}${cls.scheduleEndTime ? `–${cls.scheduleEndTime}` : ""}`
+                    ? ` · ${formatTime(cls.scheduleStartTime)}${cls.scheduleEndTime ? `–${formatTime(cls.scheduleEndTime)}` : ""}`
                     : ""}
                 </p>
               </div>
