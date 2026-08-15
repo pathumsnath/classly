@@ -1,25 +1,39 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { Search, BookOpen, Users } from "lucide-react";
 import { Card, EmptyState } from "@/components/card";
-import { formatGrade, formatMedium } from "@/lib/classes/labels";
+import { formatGrade, formatMedium, GRADE_OPTIONS } from "@/lib/classes/labels";
+import type { GradeLevel } from "@/lib/supabase/types";
 import type { ClassListRow } from "@/lib/classes/queries";
 
 export function ClassList({ classes }: { classes: ClassListRow[] }) {
   const [query, setQuery] = useState("");
+  const [gradeFilter, setGradeFilter] = useState<GradeLevel | "">("");
+  const [subjectFilter, setSubjectFilter] = useState("");
+
+  const subjectOptions = useMemo(
+    () => [...new Set(classes.map((cls) => cls.subject))].sort((a, b) => a.localeCompare(b)),
+    [classes],
+  );
+  const gradeOptions = useMemo(() => {
+    const present = new Set(classes.map((cls) => cls.grade).filter((g): g is GradeLevel => g !== null));
+    return GRADE_OPTIONS.filter((g) => present.has(g.value));
+  }, [classes]);
 
   if (classes.length === 0) {
     return <EmptyState icon={BookOpen} message="No classes yet — create your first one below." />;
   }
 
   const needle = query.trim().toLowerCase();
-  const visibleClasses = classes.filter((cls) =>
-    `${cls.subject} ${formatGrade(cls.grade)} ${formatMedium(cls.medium)} ${cls.tutorName}`
+  const visibleClasses = classes.filter((cls) => {
+    if (gradeFilter && cls.grade !== gradeFilter) return false;
+    if (subjectFilter && cls.subject !== subjectFilter) return false;
+    return `${cls.subject} ${formatGrade(cls.grade)} ${formatMedium(cls.medium)} ${cls.tutorName}`
       .toLowerCase()
-      .includes(needle),
-  );
+      .includes(needle);
+  });
 
   return (
     <div className="flex flex-col gap-3">
@@ -34,8 +48,37 @@ export function ClassList({ classes }: { classes: ClassListRow[] }) {
         />
       </div>
 
+      <div className="flex gap-2">
+        <select
+          value={gradeFilter}
+          onChange={(e) => setGradeFilter(e.target.value as GradeLevel | "")}
+          className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+        >
+          <option value="">All grades</option>
+          {gradeOptions.map((g) => (
+            <option key={g.value} value={g.value}>
+              {g.label}
+            </option>
+          ))}
+        </select>
+        <select
+          value={subjectFilter}
+          onChange={(e) => setSubjectFilter(e.target.value)}
+          className="flex-1 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
+        >
+          <option value="">All subjects</option>
+          {subjectOptions.map((subject) => (
+            <option key={subject} value={subject}>
+              {subject}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {visibleClasses.length === 0 ? (
-        <p className="px-1 text-sm text-gray-500">No classes match &ldquo;{query}&rdquo;.</p>
+        <p className="px-1 text-sm text-gray-500">
+          {query ? `No classes match "${query}".` : "No classes match the selected filters."}
+        </p>
       ) : (
         <Card className="divide-y divide-gray-100">
           {visibleClasses.map((cls) => (
@@ -45,8 +88,11 @@ export function ClassList({ classes }: { classes: ClassListRow[] }) {
               className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
             >
               <div>
-                <p className="font-medium text-gray-900">
-                  {cls.subject} · {formatGrade(cls.grade)} · {formatMedium(cls.medium)}
+                <p className="flex flex-wrap items-center gap-x-2 gap-y-1 font-medium text-gray-900">
+                  {cls.subject} · {formatGrade(cls.grade)}
+                  <span className="rounded-full bg-violet-50 px-2 py-0.5 text-xs font-medium text-violet-700">
+                    {formatMedium(cls.medium)}
+                  </span>
                 </p>
                 <p className="text-sm text-gray-500">
                   {cls.tutorName} · {cls.scheduleDays.join(", ") || "no schedule set"}
