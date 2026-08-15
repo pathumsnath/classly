@@ -61,6 +61,7 @@ export function MonthlyAttendanceGrid({
               <tr key={student.studentId}>
                 <td className="sticky left-0 z-10 whitespace-nowrap bg-white px-4 py-3">
                   <p className="font-medium text-gray-900">{student.name}</p>
+                  <p className="text-xs text-gray-500">{student.phone}</p>
                   <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-xs font-medium ${fee.className}`}>
                     {fee.label}
                   </span>

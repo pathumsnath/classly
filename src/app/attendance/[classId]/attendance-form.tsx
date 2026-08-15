@@ -86,6 +86,7 @@ export function AttendanceForm({
   const [state, formAction, pending] = useActionState(submitAttendance, {});
   const [openPayment, setOpenPayment] = useState<{
     studentName: string;
+    studentPhone: string;
     payments: OutstandingPayment[];
     walletBalance: number;
   } | null>(null);
@@ -182,7 +183,10 @@ export function AttendanceForm({
                 <div key={student.enrollmentId} className="flex flex-col gap-2 p-4">
                   <div className="flex items-center gap-3">
                     <Avatar name={student.name} />
-                    <p className="flex-1 font-medium text-gray-900">{student.name}</p>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{student.name}</p>
+                      <p className="text-sm text-gray-500">{student.phone}</p>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 pl-12">
@@ -202,6 +206,7 @@ export function AttendanceForm({
                         student.outstandingPayments.length > 0 &&
                         setOpenPayment({
                           studentName: student.name,
+                          studentPhone: student.phone,
                           payments: student.outstandingPayments,
                           walletBalance: student.walletBalance,
                         })
@@ -244,6 +249,7 @@ export function AttendanceForm({
       {openPayment && (
         <PaymentSheet
           studentName={openPayment.studentName}
+          studentPhone={openPayment.studentPhone}
           payments={openPayment.payments}
           walletBalance={openPayment.walletBalance}
           onClose={() => setOpenPayment(null)}

@@ -90,6 +90,9 @@ export interface AttendanceStudentRow {
   enrollmentId: string;
   studentId: string;
   name: string;
+  // Shown alongside the name everywhere a student list appears — two
+  // students can share a name, phone is the disambiguator.
+  phone: string;
   status: AttendanceStatus | null;
   // Scoped to *this* class only, summed across every month they owe for
   // it — not other classes the student may also be enrolled in.
@@ -152,7 +155,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
   const currentMonth = currentMonthInColombo();
 
   const [{ data: students }, { data: existingAttendance }, { data: payments }, walletBalances] = await Promise.all([
-    supabase.from("users").select("id, name").in("id", studentIds),
+    supabase.from("users").select("id, name, phone").in("id", studentIds),
     supabase.from("attendance").select("enrollment_id, status").eq("date", date).in("enrollment_id", enrollmentIds),
     // Every payment record for this class (any month) — the fee badge
     // shows what's owed for *this class* across all outstanding months,
@@ -165,7 +168,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     getWalletBalancesByStudent(supabase, session.instituteId, studentIds),
   ]);
 
-  const nameById = new Map((students ?? []).map((s) => [s.id, s.name]));
+  const studentById = new Map((students ?? []).map((s) => [s.id, s]));
   const attendanceByEnrollment = new Map((existingAttendance ?? []).map((a) => [a.enrollment_id, a.status]));
 
   interface PaymentRow {
@@ -190,7 +193,8 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     return {
       enrollmentId: e.id,
       studentId: e.student_id,
-      name: nameById.get(e.student_id) ?? "Unknown",
+      name: studentById.get(e.student_id)?.name ?? "Unknown",
+      phone: studentById.get(e.student_id)?.phone ?? "",
       status: attendanceByEnrollment.get(e.id) ?? null,
       hasFeeRecords: studentPayments.length > 0,
       feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
@@ -206,6 +210,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
 export interface MonthlyAttendanceStudentRow {
   studentId: string;
   name: string;
+  phone: string;
   hasFeeRecords: boolean;
   feeBalance: number;
   feeIsOverdue: boolean;
@@ -280,7 +285,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
   const currentMonth = currentMonthInColombo();
 
   const [{ data: students }, { data: attendanceRows }, { data: payments }] = await Promise.all([
-    supabase.from("users").select("id, name").in("id", studentIds),
+    supabase.from("users").select("id, name, phone").in("id", studentIds),
     supabase
       .from("attendance")
       .select("enrollment_id, date, status")
@@ -293,7 +298,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
       .in("student_id", studentIds),
   ]);
 
-  const nameById = new Map((students ?? []).map((s) => [s.id, s.name]));
+  const studentById = new Map((students ?? []).map((s) => [s.id, s]));
   const studentByEnrollment = new Map(enrollments.map((e) => [e.id, e.student_id]));
 
   const statusByStudentDate = new Map<string, Record<string, AttendanceStatus>>();
@@ -333,7 +338,8 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
 
     return {
       studentId: e.student_id,
-      name: nameById.get(e.student_id) ?? "Unknown",
+      name: studentById.get(e.student_id)?.name ?? "Unknown",
+      phone: studentById.get(e.student_id)?.phone ?? "",
       hasFeeRecords: studentPayments.length > 0,
       feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
       feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth)),

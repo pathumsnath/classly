@@ -15,7 +15,7 @@ function StudentPicker({
   studentId,
   onSelect,
 }: {
-  students: { id: string; name: string }[];
+  students: { id: string; name: string; phone: string }[];
   studentId: string;
   onSelect: (id: string) => void;
 }) {
@@ -27,7 +27,9 @@ function StudentPicker({
       <div className="flex flex-col gap-1.5 text-sm font-medium text-gray-700">
         Student
         <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2.5">
-          <span className="text-base text-gray-900">{selected.name}</span>
+          <span className="text-base text-gray-900">
+            {selected.name} <span className="text-sm font-normal text-gray-500">— {selected.phone}</span>
+          </span>
           <button
             type="button"
             onClick={() => {
@@ -46,7 +48,11 @@ function StudentPicker({
 
   const matches =
     query.trim().length > 0
-      ? students.filter((s) => s.name.toLowerCase().includes(query.trim().toLowerCase())).slice(0, 8)
+      ? students
+          .filter(
+            (s) => s.name.toLowerCase().includes(query.trim().toLowerCase()) || s.phone.includes(query.trim()),
+          )
+          .slice(0, 8)
       : [];
 
   return (
@@ -58,7 +64,7 @@ function StudentPicker({
           type="text"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search students by name…"
+          placeholder="Search students by name or phone…"
           className="w-full rounded-lg border border-gray-200 bg-white py-2.5 pl-9 pr-3 text-base text-gray-900 outline-none transition focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100"
         />
       </div>
@@ -75,9 +81,10 @@ function StudentPicker({
                   onSelect(s.id);
                   setQuery("");
                 }}
-                className="block w-full border-b border-gray-100 bg-white px-3 py-3 text-left text-sm text-gray-900 last:border-b-0 hover:bg-gray-50"
+                className="flex w-full items-center justify-between gap-3 border-b border-gray-100 bg-white px-3 py-3 text-left text-sm last:border-b-0 hover:bg-gray-50"
               >
-                {s.name}
+                <span className="text-gray-900">{s.name}</span>
+                <span className="shrink-0 text-gray-500">{s.phone}</span>
               </button>
             ))
           )}
@@ -92,7 +99,7 @@ export function RecordFeePaymentForm({
   fees,
   walletBalances,
 }: {
-  students: { id: string; name: string }[];
+  students: { id: string; name: string; phone: string }[];
   fees: FeeRow[];
   walletBalances: Record<string, number>;
 }) {

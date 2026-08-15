@@ -224,7 +224,9 @@ export default async function DashboardPage() {
   ]);
   const navItems = isOwner ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
   const tutorOptions = activeTutors.filter((t) => t.status === "active").map((t) => ({ id: t.id, name: t.name }));
-  const studentOptions = allStudents.filter((s) => s.status === "active").map((s) => ({ id: s.id, name: s.name }));
+  const studentOptions = allStudents
+    .filter((s) => s.status === "active")
+    .map((s) => ({ id: s.id, name: s.name, phone: s.phone }));
   const walletBalances = Object.fromEntries(
     await getWalletBalancesForStudents(studentOptions.map((s) => s.id)),
   );

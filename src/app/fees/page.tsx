@@ -31,7 +31,9 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   const { q } = await searchParams;
   const [fees, allStudents] = await Promise.all([listFees(), listStudents()]);
 
-  const studentOptions = allStudents.filter((s) => s.status === "active").map((s) => ({ id: s.id, name: s.name }));
+  const studentOptions = allStudents
+    .filter((s) => s.status === "active")
+    .map((s) => ({ id: s.id, name: s.name, phone: s.phone }));
   const walletBalances = Object.fromEntries(await getWalletBalancesForStudents(studentOptions.map((s) => s.id)));
 
   let searchResults: { id: string; name: string; phone: string }[] = [];

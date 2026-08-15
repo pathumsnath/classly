@@ -9,7 +9,7 @@ export function EnrollForm({
   students,
 }: {
   classId: string;
-  students: { id: string; name: string }[];
+  students: { id: string; name: string; phone: string }[];
 }) {
   const [state, formAction, pending] = useActionState(enrollStudent, {});
   const [mode, setMode] = useState<"existing" | "new">(students.length > 0 ? "existing" : "new");
@@ -52,7 +52,7 @@ export function EnrollForm({
             </option>
             {students.map((student) => (
               <option key={student.id} value={student.id}>
-                {student.name}
+                {student.name} — {student.phone}
               </option>
             ))}
           </Select>

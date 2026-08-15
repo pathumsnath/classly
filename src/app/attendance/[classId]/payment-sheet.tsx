@@ -13,11 +13,13 @@ import type { OutstandingPayment } from "@/lib/attendance/queries";
 // on 2-3 months can be settled in one submit instead of one at a time.
 export function PaymentSheet({
   studentName,
+  studentPhone,
   payments,
   walletBalance,
   onClose,
 }: {
   studentName: string;
+  studentPhone: string;
   payments: OutstandingPayment[];
   walletBalance: number;
   onClose: () => void;
@@ -38,7 +40,10 @@ export function PaymentSheet({
       <div className="w-full max-w-sm rounded-t-2xl bg-white p-5 shadow-xl sm:rounded-2xl">
         <div className="mx-auto mb-3 h-1 w-10 rounded-full bg-gray-200 sm:hidden" />
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-semibold text-gray-900">Record payment — {studentName}</h3>
+          <div>
+            <h3 className="font-semibold text-gray-900">Record payment — {studentName}</h3>
+            <p className="text-sm text-gray-500">{studentPhone}</p>
+          </div>
           <button
             type="button"
             onClick={onClose}
