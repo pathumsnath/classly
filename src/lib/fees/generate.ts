@@ -1,13 +1,17 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { scheduledDatesInMonth } from "@/lib/attendance/session-dates";
+import { trueUpFee, countAttendedByStudent } from "@/lib/fees/proration";
+import { nextMonth } from "@/lib/time";
 
 export interface GenerateFeesResult {
   created: number;
 }
 
 // FR-6.1 — one payments row per active enrollment per month, amount_due =
-// class.fee_amount flat (see plan: per-session proration deliberately
-// deferred past v1). Idempotent: relies on payments' unique(student_id,
+// class.fee_amount flat, billed in full before that month's attendance
+// is known (see trueUpMonthlyFees for the attendance-based correction
+// once it is). Idempotent: relies on payments' unique(student_id,
 // class_id, cycle_started_at) constraint via ignoreDuplicates, so calling
 // this twice for the same institute+month is harmless. cycle_started_at
 // is set equal to month here — this is a calendar-billed fee, not an
@@ -107,4 +111,82 @@ export async function generateFeesForClass(
   if (error) throw new Error(`Could not generate fees: ${error.message}`);
 
   return { created: inserted?.length ?? 0 };
+}
+
+// The calendar-billing counterpart to trueUpClosingCycle (see
+// attendance/actions.ts) — corrects a just-ended month's fee down to
+// match how many of its scheduled sessions each student actually
+// attended. Called by the cron route right before generating fees for
+// the new month, once the previous month's attendance is fully known.
+// Skips session-cycle billed classes — they're trued up when their own
+// cycle closes instead, not on a calendar boundary.
+export async function trueUpMonthlyFees(instituteId: string, month: string): Promise<{ adjusted: number }> {
+  const admin = createAdminClient();
+
+  const { data: payments } = await admin
+    .from("payments")
+    .select("id, class_id, student_id, amount_paid")
+    .eq("institute_id", instituteId)
+    .eq("month", month);
+
+  if (!payments || payments.length === 0) return { adjusted: 0 };
+
+  const classIds = [...new Set(payments.map((p) => p.class_id))];
+  const { data: classes } = await admin
+    .from("classes")
+    .select("id, fee_amount, schedule_days, billing_cycle_sessions")
+    .in("id", classIds);
+  const calendarClasses = (classes ?? []).filter((c) => c.billing_cycle_sessions === null);
+  if (calendarClasses.length === 0) return { adjusted: 0 };
+
+  const { data: ownerRole } = await admin
+    .from("user_roles")
+    .select("user_id")
+    .eq("institute_id", instituteId)
+    .eq("role", "owner")
+    .limit(1)
+    .maybeSingle();
+  // No owner to attribute a wallet credit to (shouldn't happen in
+  // practice) — skip the true-up rather than fail the whole cron run.
+  if (!ownerRole) return { adjusted: 0 };
+
+  let adjusted = 0;
+  for (const cls of calendarClasses) {
+    const classPayments = payments.filter((p) => p.class_id === cls.id);
+    if (classPayments.length === 0) continue;
+
+    const { data: cancellations } = await admin
+      .from("class_cancellations")
+      .select("date")
+      .eq("class_id", cls.id)
+      .gte("date", month)
+      .lt("date", nextMonth(month));
+    const cancelledDates = new Set((cancellations ?? []).map((c) => c.date));
+    const sessionDates = scheduledDatesInMonth(cls.schedule_days, month, cancelledDates);
+
+    const { data: enrollments } = await admin.from("enrollments").select("id, student_id").eq("class_id", cls.id);
+    const studentByEnrollment = new Map((enrollments ?? []).map((e) => [e.id, e.student_id]));
+
+    const { data: attendanceRows } = await admin
+      .from("attendance")
+      .select("enrollment_id, status")
+      .eq("class_id", cls.id)
+      .in("date", sessionDates);
+    const attendedByStudent = countAttendedByStudent(attendanceRows ?? [], studentByEnrollment);
+
+    for (const payment of classPayments) {
+      const attended = attendedByStudent.get(payment.student_id) ?? 0;
+      await trueUpFee(
+        admin,
+        { id: payment.id, amountPaid: payment.amount_paid, instituteId, studentId: payment.student_id },
+        cls.fee_amount,
+        attended,
+        sessionDates.length,
+        ownerRole.user_id,
+      );
+      adjusted++;
+    }
+  }
+
+  return { adjusted };
 }

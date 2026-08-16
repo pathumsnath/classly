@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { generateMonthlyFees } from "@/lib/fees/generate";
+import { generateMonthlyFees, trueUpMonthlyFees } from "@/lib/fees/generate";
+import { previousMonth } from "@/lib/time";
 
 // Runs daily (see vercel.json), not monthly — checking "is it the 1st in
 // Asia/Colombo?" here sidesteps fragile UTC-offset month-boundary cron
@@ -18,15 +19,22 @@ export async function GET(req: NextRequest) {
   }
 
   const month = `${colomboNow.getFullYear()}-${String(colomboNow.getMonth() + 1).padStart(2, "0")}-01`;
+  const endingMonth = previousMonth(month);
 
   const admin = createAdminClient();
   const { data: institutes } = await admin.from("institutes").select("id");
 
   let created = 0;
+  let adjusted = 0;
   for (const institute of institutes ?? []) {
+    // True up the month that's ending before billing the new one — its
+    // attendance is now fully known, the new month's isn't yet.
+    const trueUpResult = await trueUpMonthlyFees(institute.id, endingMonth);
+    adjusted += trueUpResult.adjusted;
+
     const result = await generateMonthlyFees(institute.id, month);
     created += result.created;
   }
 
-  return NextResponse.json({ month, institutes: institutes?.length ?? 0, created });
+  return NextResponse.json({ month, institutes: institutes?.length ?? 0, created, adjusted });
 }

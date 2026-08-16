@@ -6,6 +6,7 @@ import { requireSession } from "@/lib/auth/require-owner";
 import { sendSms } from "@/lib/sms";
 import { subjectNamesById } from "@/lib/subjects/queries";
 import { generateFeesForClass } from "@/lib/fees/generate";
+import { trueUpFee, countAttendedByStudent } from "@/lib/fees/proration";
 import { monthOfDate } from "@/lib/time";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 
@@ -25,20 +26,67 @@ function nextDay(date: string): string {
   return d.toISOString().slice(0, 10);
 }
 
+// Corrects the just-closed cycle's fee down to match how many of its
+// sessions each student actually attended (see attendanceFeeMultiplier)
+// — it was billed at the full amount when the cycle started, before
+// attendance was known. Runs once per closing cycle, right before the
+// next cycle is billed.
+async function trueUpClosingCycle(
+  admin: ReturnType<typeof createAdminClient>,
+  classId: string,
+  cycleStartedAt: string,
+  sessionDates: string[],
+  recordedBy: string,
+): Promise<void> {
+  const { data: cls } = await admin.from("classes").select("institute_id, fee_amount").eq("id", classId).maybeSingle();
+  if (!cls) return;
+
+  const { data: payments } = await admin
+    .from("payments")
+    .select("id, student_id, amount_paid")
+    .eq("class_id", classId)
+    .eq("cycle_started_at", cycleStartedAt);
+  if (!payments || payments.length === 0) return;
+
+  const { data: enrollments } = await admin.from("enrollments").select("id, student_id").eq("class_id", classId);
+  const studentByEnrollment = new Map((enrollments ?? []).map((e) => [e.id, e.student_id]));
+
+  const { data: attendanceRows } = await admin
+    .from("attendance")
+    .select("enrollment_id, status")
+    .eq("class_id", classId)
+    .in("date", sessionDates);
+
+  const attendedByStudent = countAttendedByStudent(attendanceRows ?? [], studentByEnrollment);
+
+  for (const payment of payments) {
+    const attended = attendedByStudent.get(payment.student_id) ?? 0;
+    await trueUpFee(
+      admin,
+      { id: payment.id, amountPaid: payment.amount_paid, instituteId: cls.institute_id, studentId: payment.student_id },
+      cls.fee_amount,
+      attended,
+      sessionDates.length,
+      recordedBy,
+    );
+  }
+}
+
 // Some tutors don't bill by calendar month — a class opted into
 // session-cycle billing (classes.billing_cycle_sessions set) bills a
 // cycle's fee the moment that cycle *starts*, same principle as
 // calendar-month billing generating on the 1st before that month's
 // classes happen, not once they're delivered. A cycle "closing" (its
 // Nth session's attendance just landed) means the next cycle starts
-// right now, so this bills that next cycle immediately and rolls
-// cycle_started_at forward to it. The very first cycle is billed
-// separately, when cycle billing is turned on (see classes/actions.ts).
-// Runs after every attendance submit; a no-op for the (default)
-// calendar-month classes.
+// right now, so this trues up the closing cycle's fee against actual
+// attendance, then bills the next cycle and rolls cycle_started_at
+// forward to it. The very first cycle is billed separately, when cycle
+// billing is turned on (see classes/actions.ts). Runs after every
+// attendance submit; a no-op for the (default) calendar-month classes.
 async function maybeCloseBillingCycle(
   admin: ReturnType<typeof createAdminClient>,
   classId: string,
+  recordedBy: string,
 ): Promise<boolean> {
   const { data: cls } = await admin
     .from("classes")
@@ -57,8 +105,11 @@ async function maybeCloseBillingCycle(
   const distinctDates = [...new Set((sessions ?? []).map((s) => s.date))].sort();
   if (distinctDates.length < cls.billing_cycle_sessions) return false;
 
+  const closingCycleStart = cls.cycle_started_at;
   const lastSessionDate = distinctDates[distinctDates.length - 1];
   const nextCycleStart = nextDay(lastSessionDate);
+
+  await trueUpClosingCycle(admin, classId, closingCycleStart, distinctDates, recordedBy);
   await generateFeesForClass(classId, monthOfDate(nextCycleStart), nextCycleStart);
   await admin.from("classes").update({ cycle_started_at: nextCycleStart }).eq("id", classId);
 
@@ -105,7 +156,7 @@ export async function submitAttendance(_prevState: ActionResult, formData: FormD
   // shouldn't surface as "could not submit attendance" when it did.
   let cycleCompleted = false;
   try {
-    cycleCompleted = await maybeCloseBillingCycle(admin, classId);
+    cycleCompleted = await maybeCloseBillingCycle(admin, classId, session.userId);
   } catch (err) {
     console.error("Could not close billing cycle:", err);
   }
