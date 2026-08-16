@@ -101,7 +101,7 @@ export interface OutstandingPayment {
   // class this is just the month ("2026-08"). For a session-cycle billed
   // class, month alone can't tell two cycles apart (see migration
   // 0011/0012 — different cycles can share a month bucket), so this is
-  // the cycle's own start date instead ("Cycle from Jul 21").
+  // the cycle's own start date instead ("Month from Jul 21").
   label: string;
 }
 
@@ -251,7 +251,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
         balance: p.balance,
         label:
           cls.billing_cycle_sessions !== null
-            ? `Cycle from ${formatCycleDate(p.cycle_started_at)}`
+            ? `Month from ${formatCycleDate(p.cycle_started_at)}`
             : p.month.slice(0, 7),
       })),
       walletBalance: walletBalances.get(e.student_id) ?? 0,
