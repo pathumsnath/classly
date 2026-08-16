@@ -90,6 +90,49 @@ function FeeBadges({ status }: { status: ReturnType<typeof classFeeStatus> }) {
   );
 }
 
+function PaymentRow({ fee }: { fee: FeeRow }) {
+  return (
+    <div className="flex items-center justify-between gap-4 p-4">
+      <div>
+        <p className="font-medium text-gray-900">
+          {fee.subject}
+          {fee.groupName && ` (${fee.groupName})`} — {formatMonth(fee.month)}
+        </p>
+        <p className="text-sm text-gray-500">
+          Due LKR {fee.amountDue} · Paid LKR {fee.amountPaid} · Balance LKR {fee.balance}
+        </p>
+        {fee.paidDate && (
+          <p className="text-sm text-gray-400">
+            Paid on {formatPaidDate(fee.paidDate)}
+            {isCarriedForward(fee) && " · overdue settlement"}
+          </p>
+        )}
+      </div>
+      <span
+        className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${paymentStatusBadgeClass(fee.isOverdue, fee.status)}`}
+      >
+        {fee.isOverdue ? "Overdue" : fee.status}
+      </span>
+    </div>
+  );
+}
+
+function PaymentSection({ title, fees }: { title: string; fees: FeeRow[] }) {
+  if (fees.length === 0) return null;
+  return (
+    <div>
+      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
+        {title} ({fees.length})
+      </h3>
+      <Card className="divide-y divide-gray-100">
+        {fees.map((fee) => (
+          <PaymentRow key={fee.id} fee={fee} />
+        ))}
+      </Card>
+    </div>
+  );
+}
+
 export function StudentTabs({
   studentId,
   classes,
@@ -108,6 +151,12 @@ export function StudentTabs({
     const bKey = b.paidDate ?? b.month;
     return bKey.localeCompare(aKey);
   });
+
+  // Most urgent first — overdue needs chasing, due is upcoming, completed
+  // is just history. Waived counts as resolved alongside paid.
+  const overduePayments = sortedPayments.filter((f) => f.isOverdue);
+  const duePayments = sortedPayments.filter((f) => !f.isOverdue && (f.status === "pending" || f.status === "partial"));
+  const completedPayments = sortedPayments.filter((f) => f.status === "paid" || f.status === "waived");
 
   return (
     <>
@@ -188,32 +237,11 @@ export function StudentTabs({
           {sortedPayments.length === 0 ? (
             <EmptyState icon={Receipt} message="No payment history yet." />
           ) : (
-            <Card className="divide-y divide-gray-100">
-              {sortedPayments.map((fee) => (
-                <div key={fee.id} className="flex items-center justify-between gap-4 p-4">
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {fee.subject}
-                      {fee.groupName && ` (${fee.groupName})`} — {formatMonth(fee.month)}
-                    </p>
-                    <p className="text-sm text-gray-500">
-                      Due LKR {fee.amountDue} · Paid LKR {fee.amountPaid} · Balance LKR {fee.balance}
-                    </p>
-                    {fee.paidDate && (
-                      <p className="text-sm text-gray-400">
-                        Paid on {formatPaidDate(fee.paidDate)}
-                        {isCarriedForward(fee) && " · overdue settlement"}
-                      </p>
-                    )}
-                  </div>
-                  <span
-                    className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-medium ${paymentStatusBadgeClass(fee.isOverdue, fee.status)}`}
-                  >
-                    {fee.isOverdue ? "Overdue" : fee.status}
-                  </span>
-                </div>
-              ))}
-            </Card>
+            <>
+              <PaymentSection title="Overdue" fees={overduePayments} />
+              <PaymentSection title="Due" fees={duePayments} />
+              <PaymentSection title="Completed" fees={completedPayments} />
+            </>
           )}
         </>
       )}
