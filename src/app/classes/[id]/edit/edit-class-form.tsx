@@ -1,6 +1,7 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
+import { todayInColombo } from "@/lib/time";
 import { useRouter } from "next/navigation";
 import { updateClass } from "@/lib/classes/actions";
 import { GRADE_OPTIONS, MEDIUM_OPTIONS } from "@/lib/classes/labels";
@@ -20,6 +21,7 @@ export function EditClassForm({
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(updateClass, {});
+  const [sessionBilling, setSessionBilling] = useState(cls.billingCycleSessions !== null);
 
   useEffect(() => {
     if (state.success) router.push(`/classes/${cls.id}`);
@@ -129,6 +131,46 @@ export function EditClassForm({
         defaultValue={cls.feeAmount}
         required
       />
+
+      <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={sessionBilling}
+            onChange={(e) => setSessionBilling(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          Bill by session count, not calendar month
+        </label>
+        {sessionBilling ? (
+          <>
+            <Field
+              label="Sessions per billing cycle"
+              name="billingCycleSessions"
+              type="number"
+              min={1}
+              defaultValue={cls.billingCycleSessions ?? 4}
+              required
+            />
+            <Field
+              label="Cycle start date"
+              name="cycleStartDate"
+              type="date"
+              defaultValue={cls.cycleStartedAt ?? todayInColombo()}
+              required
+            />
+            <p className="text-xs text-gray-500">
+              Sessions are counted from this date onward. If this class already had sessions before you turned this
+              on, backdate it to the first of those — otherwise leave it as today.
+            </p>
+          </>
+        ) : (
+          <p className="text-xs text-gray-500">
+            For a tutor who treats &ldquo;a month&rdquo; as any 4 (or however many) sessions they actually hold —
+            the fee generates once that many sessions have attendance recorded, not on a fixed date.
+          </p>
+        )}
+      </div>
 
       <FormError message={state.error} />
       <SubmitButton disabled={pending}>{pending ? "Saving…" : "Save changes"}</SubmitButton>

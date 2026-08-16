@@ -177,6 +177,8 @@ export interface Database {
           tutor_payment_model: TutorPaymentModel;
           tutor_payment_value: number;
           group_name: string | null;
+          billing_cycle_sessions: number | null;
+          cycle_started_at: string | null;
           created_at: string;
         };
         Insert: {
@@ -196,6 +198,8 @@ export interface Database {
           tutor_payment_model: TutorPaymentModel;
           tutor_payment_value: number;
           group_name?: string | null;
+          billing_cycle_sessions?: number | null;
+          cycle_started_at?: string | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["classes"]["Insert"]>;

@@ -118,6 +118,13 @@ export interface AttendanceStudentRow {
   walletBalance: number;
 }
 
+export interface BillingCycleProgress {
+  sessionsRequired: number;
+  // Distinct session dates recorded since the cycle started, as of right
+  // now — before whatever date is currently being viewed/submitted.
+  sessionsSoFar: number;
+}
+
 export interface ClassAttendanceState {
   classId: string;
   subject: string;
@@ -125,6 +132,7 @@ export interface ClassAttendanceState {
   date: string;
   isCancelled: boolean;
   students: AttendanceStudentRow[];
+  cycleProgress: BillingCycleProgress | null;
 }
 
 export async function getClassAttendanceState(classId: string, date: string): Promise<ClassAttendanceState | null> {
@@ -133,7 +141,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
 
   const { data: cls } = await supabase
     .from("classes")
-    .select("id, subject_id, tutor_id, group_name")
+    .select("id, subject_id, tutor_id, group_name, billing_cycle_sessions, cycle_started_at")
     .eq("id", classId)
     .eq("institute_id", session.instituteId)
     .maybeSingle();
@@ -154,6 +162,19 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     .eq("date", date)
     .maybeSingle();
 
+  let cycleProgress: BillingCycleProgress | null = null;
+  if (cls.billing_cycle_sessions !== null && cls.cycle_started_at) {
+    const { data: sessions } = await supabase
+      .from("attendance")
+      .select("date")
+      .eq("class_id", classId)
+      .gte("date", cls.cycle_started_at);
+    cycleProgress = {
+      sessionsRequired: cls.billing_cycle_sessions,
+      sessionsSoFar: new Set((sessions ?? []).map((s) => s.date)).size,
+    };
+  }
+
   const { data: enrollments } = await supabase
     .from("enrollments")
     .select("id, student_id")
@@ -161,7 +182,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     .eq("status", "active");
 
   if (!enrollments || enrollments.length === 0) {
-    return { classId, subject, groupName: cls.group_name, date, isCancelled: !!cancellation, students: [] };
+    return { classId, subject, groupName: cls.group_name, date, isCancelled: !!cancellation, students: [], cycleProgress };
   }
 
   const studentIds = enrollments.map((e) => e.student_id);
@@ -218,7 +239,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     };
   });
 
-  return { classId, subject, groupName: cls.group_name, date, isCancelled: !!cancellation, students: rows };
+  return { classId, subject, groupName: cls.group_name, date, isCancelled: !!cancellation, students: rows, cycleProgress };
 }
 
 export interface MonthlyAttendanceStudentRow {

@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClass } from "@/lib/classes/actions";
 import { GRADE_OPTIONS, MEDIUM_OPTIONS } from "@/lib/classes/labels";
+import { todayInColombo } from "@/lib/time";
 import { Field, FormError, Select, SubmitButton } from "@/components/form";
 
 const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -25,6 +26,7 @@ export function CreateClassForm({
 }) {
   const router = useRouter();
   const [state, formAction, pending] = useActionState(createClass, {});
+  const [sessionBilling, setSessionBilling] = useState(false);
 
   useEffect(() => {
     if (state.success && state.classId) {
@@ -111,6 +113,42 @@ export function CreateClassForm({
       />
       <Field label="Max students (optional)" name="maxStudents" type="number" min={1} />
       <Field label="Fee amount (LKR)" name="feeAmount" type="number" min={0} step="0.01" required />
+
+      <div className="flex flex-col gap-2 rounded-lg border border-gray-100 bg-gray-50 p-3">
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            type="checkbox"
+            checked={sessionBilling}
+            onChange={(e) => setSessionBilling(e.target.checked)}
+            className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+          />
+          Bill by session count, not calendar month
+        </label>
+        {sessionBilling ? (
+          <>
+            <Field
+              label="Sessions per billing cycle"
+              name="billingCycleSessions"
+              type="number"
+              min={1}
+              defaultValue={4}
+              required
+            />
+            <Field
+              label="Cycle start date"
+              name="cycleStartDate"
+              type="date"
+              defaultValue={todayInColombo()}
+              required
+            />
+          </>
+        ) : (
+          <p className="text-xs text-gray-500">
+            For a tutor who treats &ldquo;a month&rdquo; as any 4 (or however many) sessions they actually hold —
+            the fee generates once that many sessions have attendance recorded, not on a fixed date.
+          </p>
+        )}
+      </div>
 
       <input type="hidden" name="tutorPaymentModel" value="revenue_share" />
       <input type="hidden" name="tutorPaymentValue" value={100 - commissionPercent} />

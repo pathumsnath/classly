@@ -162,7 +162,7 @@ export default async function AttendancePage({
       ) : state.students.length === 0 ? (
         <EmptyState icon={Users} message="No students enrolled in this class yet." />
       ) : (
-        <AttendanceForm classId={classId} date={date} students={state.students} />
+        <AttendanceForm classId={classId} date={date} students={state.students} cycleProgress={state.cycleProgress} />
       )}
     </PageShell>
   );

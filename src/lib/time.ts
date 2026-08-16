@@ -14,6 +14,13 @@ export function currentMonthInColombo(): string {
   return `${todayInColombo().slice(0, 7)}-01`;
 }
 
+// The calendar month containing an arbitrary "YYYY-MM-DD" date — used to
+// bucket a session-cycle fee into whichever month the cycle actually
+// completed in, same shape as currentMonthInColombo's "YYYY-MM-01".
+export function monthOfDate(date: string): string {
+  return `${date.slice(0, 7)}-01`;
+}
+
 // Calendar-week bucket within the month (1-7 -> 1, 8-14 -> 2, ...), not a
 // count of "which Nth Monday" — so a class meeting twice a week shows the
 // same week number for both sessions in the same calendar week.

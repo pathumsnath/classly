@@ -6,7 +6,7 @@ import { submitAttendance, sendAbsenceAlerts, markClassCancelled } from "@/lib/a
 import { FormError, SubmitButton } from "@/components/form";
 import { Card, Avatar } from "@/components/card";
 import type { AttendanceStatus } from "@/lib/supabase/types";
-import type { AttendanceStudentRow, OutstandingPayment } from "@/lib/attendance/queries";
+import type { AttendanceStudentRow, OutstandingPayment, BillingCycleProgress } from "@/lib/attendance/queries";
 import { PaymentSheet } from "./payment-sheet";
 
 // Starts from absent (the default) so a single tap does the most common
@@ -77,10 +77,12 @@ export function AttendanceForm({
   classId,
   date,
   students,
+  cycleProgress,
 }: {
   classId: string;
   date: string;
   students: AttendanceStudentRow[];
+  cycleProgress: BillingCycleProgress | null;
 }) {
   // Defaults to absent so a tutor actively marks who showed up, rather
   // than starting everyone present and having to catch the absentees.
@@ -121,6 +123,12 @@ export function AttendanceForm({
           <CheckCheck className="h-4 w-4 text-green-600" />
           Submitted: {counts.present} present, {counts.absent} absent, {counts.late} late.
         </p>
+        {state.cycleCompleted && (
+          <p className="rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
+            That was this class&apos;s {cycleProgress?.sessionsRequired ?? "final"}th session this cycle — the fee
+            for every enrolled student was just generated.
+          </p>
+        )}
         <AbsenceAlertPanel classId={classId} date={date} absentCount={counts.absent} />
       </Card>
     );
@@ -135,6 +143,14 @@ export function AttendanceForm({
         <p className="text-sm font-medium text-gray-700">
           <span className="text-gray-900">{presentCount}</span> of {students.length} present
         </p>
+
+        {cycleProgress && (
+          <p className="w-fit rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700">
+            Session {Math.min(cycleProgress.sessionsSoFar + 1, cycleProgress.sessionsRequired)} of{" "}
+            {cycleProgress.sessionsRequired} this billing cycle
+            {cycleProgress.sessionsSoFar + 1 >= cycleProgress.sessionsRequired && " — submitting bills this cycle"}
+          </p>
+        )}
 
         <div className="flex items-center gap-2">
           <button

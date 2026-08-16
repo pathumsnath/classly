@@ -41,6 +41,11 @@ export interface ClassDetail extends ClassRow {
   maxStudents: number | null;
   tutorPaymentModel: TutorPaymentModel;
   tutorPaymentValue: number;
+  // Null = billed on the calendar-month cron, like every class used to
+  // be. Set = this class bills once this many distinct session dates have
+  // attendance recorded since cycleStartedAt (see submitAttendance).
+  billingCycleSessions: number | null;
+  cycleStartedAt: string | null;
 }
 
 export interface EnrolledStudentRow {
@@ -258,6 +263,8 @@ export async function getClass(classId: string): Promise<ClassDetail | null> {
     maxStudents: cls.max_students,
     tutorPaymentModel: cls.tutor_payment_model,
     tutorPaymentValue: cls.tutor_payment_value,
+    billingCycleSessions: cls.billing_cycle_sessions,
+    cycleStartedAt: cls.cycle_started_at,
   };
 }
 

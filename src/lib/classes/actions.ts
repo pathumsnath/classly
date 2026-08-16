@@ -67,6 +67,13 @@ interface ParsedClassInput {
   tutorPaymentModel: TutorPaymentModel;
   tutorPaymentValue: number;
   groupName: string | null;
+  // Null = the default calendar-month cron billing. A number opts this
+  // class into session-cycle billing instead (see submitAttendance).
+  billingCycleSessions: number | null;
+  // Only meaningful alongside billingCycleSessions — sessions are counted
+  // from this date onward, so it can be backdated to cover sessions that
+  // already happened before session-cycle billing was turned on.
+  cycleStartDate: string | null;
 }
 
 function parseClassInput(formData: FormData): ParsedClassInput | { error: string } {
@@ -106,6 +113,17 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
     return { error: "Max students must be a positive number." };
   }
 
+  const billingCycleSessionsRaw = String(formData.get("billingCycleSessions") || "").trim();
+  const billingCycleSessions = billingCycleSessionsRaw ? Number(billingCycleSessionsRaw) : null;
+  if (billingCycleSessionsRaw && (Number.isNaN(billingCycleSessions) || (billingCycleSessions ?? 0) < 1)) {
+    return { error: "Sessions per billing cycle must be a positive number." };
+  }
+
+  const cycleStartDate = String(formData.get("cycleStartDate") || "").trim() || null;
+  if (billingCycleSessions !== null && !cycleStartDate) {
+    return { error: "Cycle start date is required when billing by session count." };
+  }
+
   return {
     grade,
     medium,
@@ -122,6 +140,8 @@ function parseClassInput(formData: FormData): ParsedClassInput | { error: string
     tutorPaymentModel,
     tutorPaymentValue,
     groupName,
+    billingCycleSessions,
+    cycleStartDate,
   };
 }
 
@@ -153,6 +173,8 @@ export async function createClass(_prevState: ActionResult, formData: FormData):
       tutor_payment_model: parsed.tutorPaymentModel,
       tutor_payment_value: parsed.tutorPaymentValue,
       group_name: parsed.groupName,
+      billing_cycle_sessions: parsed.billingCycleSessions,
+      cycle_started_at: parsed.cycleStartDate,
     })
     .select("id")
     .single();
@@ -193,6 +215,8 @@ export async function updateClass(_prevState: ActionResult, formData: FormData):
       tutor_payment_model: parsed.tutorPaymentModel,
       tutor_payment_value: parsed.tutorPaymentValue,
       group_name: parsed.groupName,
+      billing_cycle_sessions: parsed.billingCycleSessions,
+      cycle_started_at: parsed.cycleStartDate,
     })
     .eq("id", classId)
     .eq("institute_id", session.instituteId);

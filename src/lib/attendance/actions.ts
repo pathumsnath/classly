@@ -5,14 +5,58 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
 import { sendSms } from "@/lib/sms";
 import { subjectNamesById } from "@/lib/subjects/queries";
+import { generateFeesForClass } from "@/lib/fees/generate";
+import { monthOfDate } from "@/lib/time";
 import type { AttendanceStatus } from "@/lib/supabase/types";
 
 export interface ActionResult {
   error?: string;
   success?: boolean;
+  // Set when this submission was the class's Nth session and pushed it
+  // over a session-cycle billing threshold — lets the form say so.
+  cycleCompleted?: boolean;
 }
 
 const STATUSES: AttendanceStatus[] = ["present", "absent", "late"];
+
+function nextDay(date: string): string {
+  const d = new Date(`${date}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+// Some tutors don't bill by calendar month — a class opted into
+// session-cycle billing (classes.billing_cycle_sessions set) generates
+// its fee once that many distinct session dates have attendance recorded
+// since the cycle last closed, not on a fixed date. Runs after every
+// attendance submit; a no-op for the (default) calendar-month classes.
+async function maybeCloseBillingCycle(
+  admin: ReturnType<typeof createAdminClient>,
+  classId: string,
+): Promise<boolean> {
+  const { data: cls } = await admin
+    .from("classes")
+    .select("billing_cycle_sessions, cycle_started_at")
+    .eq("id", classId)
+    .maybeSingle();
+
+  if (!cls || cls.billing_cycle_sessions === null || !cls.cycle_started_at) return false;
+
+  const { data: sessions } = await admin
+    .from("attendance")
+    .select("date")
+    .eq("class_id", classId)
+    .gte("date", cls.cycle_started_at);
+
+  const distinctDates = [...new Set((sessions ?? []).map((s) => s.date))].sort();
+  if (distinctDates.length < cls.billing_cycle_sessions) return false;
+
+  const lastSessionDate = distinctDates[distinctDates.length - 1];
+  await generateFeesForClass(classId, monthOfDate(lastSessionDate));
+  await admin.from("classes").update({ cycle_started_at: nextDay(lastSessionDate) }).eq("id", classId);
+
+  return true;
+}
 
 // FR-5.3/5.4/5.9 — bulk upsert one status per enrollment for this
 // class+date. attendance has unique(enrollment_id, date), so re-submitting
@@ -50,8 +94,17 @@ export async function submitAttendance(_prevState: ActionResult, formData: FormD
   const { error } = await admin.from("attendance").upsert(rows, { onConflict: "enrollment_id,date" });
   if (error) return { error: `Could not submit attendance: ${error.message}` };
 
+  // Attendance is already saved at this point — a billing-cycle hiccup
+  // shouldn't surface as "could not submit attendance" when it did.
+  let cycleCompleted = false;
+  try {
+    cycleCompleted = await maybeCloseBillingCycle(admin, classId);
+  } catch (err) {
+    console.error("Could not close billing cycle:", err);
+  }
+
   revalidatePath(`/attendance/${classId}`);
-  return { success: true };
+  return { success: true, cycleCompleted };
 }
 
 // FR-5.8 — cancelling a date clears any attendance already recorded for
