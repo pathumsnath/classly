@@ -14,8 +14,11 @@ const STATUS_LETTER: Record<AttendanceStatus, string> = {
   late: "L",
 };
 
+// "Jul 29" rather than a bare day number — a session-cycle's dates can
+// straddle a calendar-month boundary, where "29" then "5" would be
+// ambiguous about which month each column is actually in.
 function dayLabel(date: string) {
-  return new Date(`${date}T00:00:00`).getDate();
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 function feeBadge(student: MonthlyAttendanceStudentRow) {

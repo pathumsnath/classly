@@ -260,25 +260,65 @@ export interface ClassMonthlyAttendance {
   groupName: string | null;
   month: string;
   // This class's own session dates within the month (from schedule_days),
-  // excluding any that were cancelled — the grid's columns.
+  // excluding any that were cancelled — the grid's columns. For a
+  // session-cycle class this is instead the current cycle's own dates,
+  // which can span a month boundary — see cycleProgress.
   sessionDates: string[];
   students: MonthlyAttendanceStudentRow[];
   // Fees collected from this class's students for the viewed month —
   // gross income, same figure the tutor dashboard's class list shows
   // for the current month, but following whichever month is on screen.
+  // Not meaningful (always 0) for a session-cycle class's in-progress
+  // cycle — its fee doesn't exist until the cycle closes.
   collectedThisMonth: number;
+  // Non-null only for a class on session-cycle billing — the calendar
+  // grid doesn't apply to it (a cycle can straddle a month boundary), so
+  // the page shows this instead of month navigation.
+  cycleProgress: BillingCycleProgress | null;
+}
+
+// Walks forward day-by-day from `from`, collecting scheduled (and not
+// cancelled) session dates until there are `count` of them — a
+// session-cycle's own dates don't align to a calendar month, so this
+// can't be a simple date-range scan like the calendar-month branch.
+// Capped well past any realistic cycle length as a runaway guard (e.g. a
+// class with no schedule_days would otherwise loop forever).
+async function walkCycleSessionDates(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  classId: string,
+  scheduleDays: string[],
+  from: string,
+  count: number,
+): Promise<string[]> {
+  const dates: string[] = [];
+  const d = new Date(`${from}T00:00:00Z`);
+  for (let i = 0; dates.length < count && i < 1000; i++) {
+    const dateStr = d.toISOString().slice(0, 10);
+    if (scheduleDays.includes(WEEKDAY_NAMES[d.getUTCDay()])) {
+      const { data: cancellation } = await supabase
+        .from("class_cancellations")
+        .select("id")
+        .eq("class_id", classId)
+        .eq("date", dateStr)
+        .maybeSingle();
+      if (!cancellation) dates.push(dateStr);
+    }
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return dates;
 }
 
 // Tutor read-only view — a whole month's attendance for a class at once
 // instead of paging day by day, since a tutor is reviewing history rather
-// than marking it live.
+// than marking it live. `month` is ignored for a class on session-cycle
+// billing, which shows its current cycle's own dates instead.
 export async function getClassAttendanceForMonth(classId: string, month: string): Promise<ClassMonthlyAttendance | null> {
   const session = await requireSession();
   const supabase = await createClient();
 
   const { data: cls } = await supabase
     .from("classes")
-    .select("id, subject_id, tutor_id, schedule_days, group_name")
+    .select("id, subject_id, tutor_id, schedule_days, group_name, billing_cycle_sessions, cycle_started_at")
     .eq("id", classId)
     .eq("institute_id", session.instituteId)
     .maybeSingle();
@@ -289,23 +329,45 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
   const subjectNames = await subjectNamesById(supabase, [cls.subject_id]);
   const subject = subjectNames.get(cls.subject_id) ?? "Unknown";
 
-  const [year, mon] = month.split("-").map(Number);
-  const daysInMonth = new Date(Date.UTC(year, mon, 0)).getUTCDate();
-  const allDatesInMonth: string[] = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const d = new Date(Date.UTC(year, mon - 1, day));
-    if (cls.schedule_days.includes(WEEKDAY_NAMES[d.getUTCDay()])) {
-      allDatesInMonth.push(d.toISOString().slice(0, 10));
-    }
-  }
+  let sessionDates: string[];
+  let cycleProgress: BillingCycleProgress | null = null;
 
-  const { data: cancellations } = await supabase
-    .from("class_cancellations")
-    .select("date")
-    .eq("class_id", classId)
-    .in("date", allDatesInMonth);
-  const cancelledDates = new Set((cancellations ?? []).map((c) => c.date));
-  const sessionDates = allDatesInMonth.filter((d) => !cancelledDates.has(d));
+  if (cls.billing_cycle_sessions !== null && cls.cycle_started_at) {
+    sessionDates = await walkCycleSessionDates(
+      supabase,
+      classId,
+      cls.schedule_days,
+      cls.cycle_started_at,
+      cls.billing_cycle_sessions,
+    );
+    const { data: sessionsSoFarRows } = await supabase
+      .from("attendance")
+      .select("date")
+      .eq("class_id", classId)
+      .gte("date", cls.cycle_started_at);
+    cycleProgress = {
+      sessionsRequired: cls.billing_cycle_sessions,
+      sessionsSoFar: new Set((sessionsSoFarRows ?? []).map((s) => s.date)).size,
+    };
+  } else {
+    const [year, mon] = month.split("-").map(Number);
+    const daysInMonth = new Date(Date.UTC(year, mon, 0)).getUTCDate();
+    const allDatesInMonth: string[] = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(Date.UTC(year, mon - 1, day));
+      if (cls.schedule_days.includes(WEEKDAY_NAMES[d.getUTCDay()])) {
+        allDatesInMonth.push(d.toISOString().slice(0, 10));
+      }
+    }
+
+    const { data: cancellations } = await supabase
+      .from("class_cancellations")
+      .select("date")
+      .eq("class_id", classId)
+      .in("date", allDatesInMonth);
+    const cancelledDates = new Set((cancellations ?? []).map((c) => c.date));
+    sessionDates = allDatesInMonth.filter((d) => !cancelledDates.has(d));
+  }
 
   const { data: enrollments } = await supabase
     .from("enrollments")
@@ -314,7 +376,16 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     .eq("status", "active");
 
   if (!enrollments || enrollments.length === 0) {
-    return { classId, subject, groupName: cls.group_name, month, sessionDates, students: [], collectedThisMonth: 0 };
+    return {
+      classId,
+      subject,
+      groupName: cls.group_name,
+      month,
+      sessionDates,
+      students: [],
+      collectedThisMonth: 0,
+      cycleProgress,
+    };
   }
 
   const studentIds = enrollments.map((e) => e.student_id);
@@ -383,7 +454,16 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     };
   });
 
-  return { classId, subject, groupName: cls.group_name, month, sessionDates, students: rows, collectedThisMonth };
+  return {
+    classId,
+    subject,
+    groupName: cls.group_name,
+    month,
+    sessionDates,
+    students: rows,
+    collectedThisMonth,
+    cycleProgress,
+  };
 }
 
 export interface AttendanceRecordRow {
