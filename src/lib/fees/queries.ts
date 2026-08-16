@@ -52,7 +52,7 @@ async function toFeeRows(
 
   const [{ data: students }, { data: classes }] = await Promise.all([
     supabase.from("users").select("id, name, phone").in("id", studentIds),
-    supabase.from("classes").select("id, subject_id, tutor_id, group_name").in("id", classIds),
+    supabase.from("classes").select("id, subject_id, tutor_id, group_name, billing_cycle_sessions").in("id", classIds),
   ]);
 
   const tutorIds = [...new Set((classes ?? []).map((c) => c.tutor_id))];
@@ -74,12 +74,13 @@ async function toFeeRows(
     (classes ?? []).map((c) => [c.id, tutorNameById.get(c.tutor_id) ?? "Unknown"]),
   );
   const groupNameByClassId = new Map((classes ?? []).map((c) => [c.id, c.group_name]));
+  const cycleBilledByClassId = new Map((classes ?? []).map((c) => [c.id, c.billing_cycle_sessions !== null]));
 
   const currentMonth = currentMonthInColombo();
 
   const rows: FeeRow[] = payments.map((p) => {
     const student = studentById.get(p.student_id);
-    const isOverdue = computeIsOverdue(p.status, p.month, currentMonth);
+    const isOverdue = computeIsOverdue(p.status, p.month, currentMonth, cycleBilledByClassId.get(p.class_id) ?? false);
     return {
       id: p.id,
       studentId: p.student_id,

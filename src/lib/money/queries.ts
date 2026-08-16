@@ -45,12 +45,19 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
     // property of today's date vs. when the fee was due.
     supabase
       .from("payments")
-      .select("balance, status, month")
+      .select("class_id, balance, status, month")
       .eq("institute_id", session.instituteId)
       .in("status", ["pending", "partial"]),
   ]);
 
   const rows = payments ?? [];
+  const unpaidRows = unpaid ?? [];
+
+  const overdueCheckClassIds = [...new Set([...rows.map((p) => p.class_id), ...unpaidRows.map((p) => p.class_id)])];
+  const { data: overdueCheckClasses } = overdueCheckClassIds.length
+    ? await supabase.from("classes").select("id, billing_cycle_sessions").in("id", overdueCheckClassIds)
+    : { data: [] };
+  const cycleBilledByClassId = new Map((overdueCheckClasses ?? []).map((c) => [c.id, c.billing_cycle_sessions !== null]));
 
   let collected = 0;
   let pending = 0;
@@ -62,7 +69,8 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
     collected += p.amount_paid;
     totalDue += p.amount_due;
 
-    if (!isOverdue(p.status, p.month, currentMonth) && (p.status === "pending" || p.status === "partial")) {
+    const cycleBilled = cycleBilledByClassId.get(p.class_id) ?? false;
+    if (!isOverdue(p.status, p.month, currentMonth, cycleBilled) && (p.status === "pending" || p.status === "partial")) {
       pending += p.balance;
     }
 
@@ -73,8 +81,8 @@ export async function getMoneyOverview(month: string): Promise<MoneyOverview> {
     byClass.set(p.class_id, entry);
   }
 
-  const overdueTotal = (unpaid ?? [])
-    .filter((p) => isOverdue(p.status, p.month, currentMonth))
+  const overdueTotal = unpaidRows
+    .filter((p) => isOverdue(p.status, p.month, currentMonth, cycleBilledByClassId.get(p.class_id) ?? false))
     .reduce((sum, p) => sum + p.balance, 0);
 
   const classIds = [...byClass.keys()];

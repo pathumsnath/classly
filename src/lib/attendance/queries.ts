@@ -233,7 +233,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
       status: attendanceByEnrollment.get(e.id) ?? null,
       hasFeeRecords: studentPayments.length > 0,
       feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
-      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth)),
+      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth, cls.billing_cycle_sessions !== null)),
       outstandingPayments: outstanding.map((p) => ({ id: p.id, month: p.month, balance: p.balance })),
       walletBalance: walletBalances.get(e.student_id) ?? 0,
     };
@@ -496,7 +496,7 @@ export async function getClassAttendanceForMonth(
       phone: studentById.get(e.student_id)?.phone ?? "",
       hasFeeRecords: studentPayments.length > 0,
       feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
-      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth)),
+      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth, cls.billing_cycle_sessions !== null)),
       statusByDate,
     };
   });
