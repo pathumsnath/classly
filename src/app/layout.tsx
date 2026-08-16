@@ -18,6 +18,10 @@ export const metadata: Metadata = {
   description:
     "Run classes, attendance, fee collection, and tutor salaries for your tuition institute.",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/favicon.ico",
+    apple: "/icons/apple-touch-icon.png",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
