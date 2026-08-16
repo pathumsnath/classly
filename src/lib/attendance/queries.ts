@@ -275,6 +275,11 @@ export interface ClassMonthlyAttendance {
   // grid doesn't apply to it (a cycle can straddle a month boundary), so
   // the page shows this instead of month navigation.
   cycleProgress: BillingCycleProgress | null;
+  // How many cycles back from the current (open) one is being viewed —
+  // 0 is current, 1 is the one before it, etc. Only meaningful alongside
+  // cycleProgress; lets the page disable "forward" past 0 and label a
+  // past cycle by its actual dates instead of "current".
+  cycleOffset: number;
 }
 
 // Walks forward day-by-day from `from`, collecting scheduled (and not
@@ -308,11 +313,49 @@ async function walkCycleSessionDates(
   return dates;
 }
 
+// The reverse of walkCycleSessionDates — steps backward from just before
+// `from` to find the start date of the cycle immediately preceding it
+// (i.e. `count` scheduled, non-cancelled sessions earlier). Used to page
+// backward through a session-cycle class's closed cycles, since their
+// boundaries aren't stored anywhere — only the *current* cycle's start is
+// (classes.cycle_started_at), so history has to be re-derived from the
+// schedule pattern each time.
+async function stepCycleStartBackward(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  classId: string,
+  scheduleDays: string[],
+  from: string,
+  count: number,
+): Promise<string> {
+  const dates: string[] = [];
+  const d = new Date(`${from}T00:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - 1);
+  for (let i = 0; dates.length < count && i < 1000; i++) {
+    const dateStr = d.toISOString().slice(0, 10);
+    if (scheduleDays.includes(WEEKDAY_NAMES[d.getUTCDay()])) {
+      const { data: cancellation } = await supabase
+        .from("class_cancellations")
+        .select("id")
+        .eq("class_id", classId)
+        .eq("date", dateStr)
+        .maybeSingle();
+      if (!cancellation) dates.push(dateStr);
+    }
+    d.setUTCDate(d.getUTCDate() - 1);
+  }
+  return dates[dates.length - 1] ?? from;
+}
+
 // Tutor read-only view — a whole month's attendance for a class at once
 // instead of paging day by day, since a tutor is reviewing history rather
 // than marking it live. `month` is ignored for a class on session-cycle
-// billing, which shows its current cycle's own dates instead.
-export async function getClassAttendanceForMonth(classId: string, month: string): Promise<ClassMonthlyAttendance | null> {
+// billing, which shows one of its cycles instead — `cycleOffset` (0 =
+// current/open cycle, 1 = the one before it, etc.) picks which.
+export async function getClassAttendanceForMonth(
+  classId: string,
+  month: string,
+  cycleOffset = 0,
+): Promise<ClassMonthlyAttendance | null> {
   const session = await requireSession();
   const supabase = await createClient();
 
@@ -333,18 +376,21 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
   let cycleProgress: BillingCycleProgress | null = null;
 
   if (cls.billing_cycle_sessions !== null && cls.cycle_started_at) {
-    sessionDates = await walkCycleSessionDates(
-      supabase,
-      classId,
-      cls.schedule_days,
-      cls.cycle_started_at,
-      cls.billing_cycle_sessions,
-    );
+    let cycleStart = cls.cycle_started_at;
+    for (let i = 0; i < cycleOffset; i++) {
+      cycleStart = await stepCycleStartBackward(supabase, classId, cls.schedule_days, cycleStart, cls.billing_cycle_sessions);
+    }
+
+    sessionDates = await walkCycleSessionDates(supabase, classId, cls.schedule_days, cycleStart, cls.billing_cycle_sessions);
+
+    // Bounded to this specific cycle's own dates (not "everything since
+    // cycleStart") so a past, fully-closed cycle doesn't pick up a later
+    // cycle's sessions too.
     const { data: sessionsSoFarRows } = await supabase
       .from("attendance")
       .select("date")
       .eq("class_id", classId)
-      .gte("date", cls.cycle_started_at);
+      .in("date", sessionDates);
     cycleProgress = {
       sessionsRequired: cls.billing_cycle_sessions,
       sessionsSoFar: new Set((sessionsSoFarRows ?? []).map((s) => s.date)).size,
@@ -385,6 +431,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
       students: [],
       collectedThisMonth: 0,
       cycleProgress,
+      cycleOffset,
     };
   }
 
@@ -463,6 +510,7 @@ export async function getClassAttendanceForMonth(classId: string, month: string)
     students: rows,
     collectedThisMonth,
     cycleProgress,
+    cycleOffset,
   };
 }
 

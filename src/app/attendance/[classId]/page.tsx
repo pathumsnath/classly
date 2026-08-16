@@ -6,6 +6,7 @@ import { PageShell } from "@/components/page-shell";
 import { EmptyState } from "@/components/card";
 import { Users } from "lucide-react";
 import { MonthlyAttendanceGrid } from "./monthly-attendance-grid";
+import { CycleHeader } from "./cycle-header";
 import { AttendanceTabs } from "./attendance-tabs";
 
 export default async function AttendancePage({
@@ -13,51 +14,44 @@ export default async function AttendancePage({
   searchParams,
 }: {
   params: Promise<{ classId: string }>;
-  searchParams: Promise<{ date?: string; month?: string; view?: string }>;
+  searchParams: Promise<{ date?: string; month?: string; view?: string; cycleOffset?: string }>;
 }) {
   const { classId } = await params;
   const session = await getSessionInfo();
   const isTutor = session?.role === "tutor";
-  const { view, date: dateParam, month: monthParam } = await searchParams;
+  const { view, date: dateParam, month: monthParam, cycleOffset: cycleOffsetParam } = await searchParams;
   const month = monthParam || currentMonthInColombo();
+  const cycleOffset = Math.max(0, Number(cycleOffsetParam) || 0);
 
   // Tutors only ever get the whole-month read-only review (marking is the
   // owner/admin_staff's job) — no tabs, so no need to fetch the day view
   // too.
   if (isTutor) {
-    const monthly = await getClassAttendanceForMonth(classId, month);
+    const monthly = await getClassAttendanceForMonth(classId, month, cycleOffset);
     if (!monthly) notFound();
 
     return (
       <PageShell title={monthly.groupName ? `${monthly.subject} — ${monthly.groupName}` : monthly.subject} backHref="/">
         {monthly.cycleProgress ? (
-          <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-3 py-1.5 text-sm shadow-sm">
-            <span className="font-medium text-gray-900">Current billing cycle</span>
-            <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
-              Session {Math.min(monthly.cycleProgress.sessionsSoFar + 1, monthly.cycleProgress.sessionsRequired)} of{" "}
-              {monthly.cycleProgress.sessionsRequired}
+          <CycleHeader
+            classId={classId}
+            cycleProgress={monthly.cycleProgress}
+            cycleOffset={monthly.cycleOffset}
+            sessionDates={monthly.sessionDates}
+          />
+        ) : (
+          <>
+            <span className="font-medium text-gray-900">
+              {new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
+                month: "long",
+                year: "numeric",
+                timeZone: "UTC",
+              })}
             </span>
-          </div>
-        ) : (
-          <span className="font-medium text-gray-900">
-            {new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
-              month: "long",
-              year: "numeric",
-              timeZone: "UTC",
-            })}
-          </span>
-        )}
-
-        {monthly.cycleProgress ? (
-          <p className="text-sm text-gray-500">
-            {monthly.cycleProgress.sessionsSoFar >= monthly.cycleProgress.sessionsRequired
-              ? "This cycle is complete — fees have been generated."
-              : `Fee generates once session ${monthly.cycleProgress.sessionsRequired} is marked.`}
-          </p>
-        ) : (
-          <span className="w-fit rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
-            LKR {monthly.collectedThisMonth.toLocaleString()} collected
-          </span>
+            <span className="w-fit rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
+              LKR {monthly.collectedThisMonth.toLocaleString()} collected
+            </span>
+          </>
         )}
 
         {monthly.students.length === 0 ? (
@@ -75,7 +69,7 @@ export default async function AttendancePage({
   const date = dateParam || todayInColombo();
   const [dayState, monthlyState] = await Promise.all([
     getClassAttendanceState(classId, date),
-    getClassAttendanceForMonth(classId, month),
+    getClassAttendanceForMonth(classId, month, cycleOffset),
   ]);
   if (!dayState || !monthlyState) notFound();
 

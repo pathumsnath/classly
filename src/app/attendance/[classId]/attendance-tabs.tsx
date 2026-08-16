@@ -8,6 +8,7 @@ import { undoCancelClass } from "@/lib/attendance/actions";
 import { weekOfMonth } from "@/lib/time";
 import { AttendanceForm } from "./attendance-form";
 import { MonthlyAttendanceGrid } from "./monthly-attendance-grid";
+import { CycleHeader } from "./cycle-header";
 import type { ClassAttendanceState, ClassMonthlyAttendance } from "@/lib/attendance/queries";
 
 function addDays(date: string, delta: number): string {
@@ -120,53 +121,41 @@ export function AttendanceTabs({
       ) : (
         <>
           {monthlyState.cycleProgress ? (
-            // A cycle can straddle a calendar-month boundary, so there's
-            // no "previous/next month" to page through here — just the
-            // current cycle's own dates, whichever months they fall in.
-            <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-3 py-1.5 text-sm shadow-sm">
-              <span className="font-medium text-gray-900">Current billing cycle</span>
-              <span className="rounded-full bg-indigo-50 px-2.5 py-1 text-xs font-medium text-indigo-700">
-                Session{" "}
-                {Math.min(monthlyState.cycleProgress.sessionsSoFar + 1, monthlyState.cycleProgress.sessionsRequired)}{" "}
-                of {monthlyState.cycleProgress.sessionsRequired}
-              </span>
-            </div>
+            <CycleHeader
+              classId={classId}
+              cycleProgress={monthlyState.cycleProgress}
+              cycleOffset={monthlyState.cycleOffset}
+              sessionDates={monthlyState.sessionDates}
+            />
           ) : (
-            <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
-              <Link
-                href={`/attendance/${classId}?view=monthly&month=${addMonths(month, -1)}`}
-                aria-label="Previous month"
-                className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </Link>
-              <span className="font-medium text-gray-900">
-                {new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
-                  month: "long",
-                  year: "numeric",
-                  timeZone: "UTC",
-                })}
+            <>
+              <div className="flex w-fit items-center gap-3 rounded-full border border-gray-100 bg-white px-2 py-1.5 text-sm shadow-sm">
+                <Link
+                  href={`/attendance/${classId}?view=monthly&month=${addMonths(month, -1)}`}
+                  aria-label="Previous month"
+                  className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Link>
+                <span className="font-medium text-gray-900">
+                  {new Date(`${month}T00:00:00Z`).toLocaleDateString("en-US", {
+                    month: "long",
+                    year: "numeric",
+                    timeZone: "UTC",
+                  })}
+                </span>
+                <Link
+                  href={`/attendance/${classId}?view=monthly&month=${addMonths(month, 1)}`}
+                  aria-label="Next month"
+                  className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </Link>
+              </div>
+              <span className="w-fit rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
+                LKR {monthlyState.collectedThisMonth.toLocaleString()} collected
               </span>
-              <Link
-                href={`/attendance/${classId}?view=monthly&month=${addMonths(month, 1)}`}
-                aria-label="Next month"
-                className="rounded-full p-2.5 text-gray-400 transition hover:bg-gray-50 hover:text-gray-700"
-              >
-                <ChevronRight className="h-5 w-5" />
-              </Link>
-            </div>
-          )}
-
-          {monthlyState.cycleProgress ? (
-            <p className="text-sm text-gray-500">
-              {monthlyState.cycleProgress.sessionsSoFar >= monthlyState.cycleProgress.sessionsRequired
-                ? "This cycle is complete — fees have been generated."
-                : `Fee generates once session ${monthlyState.cycleProgress.sessionsRequired} is marked.`}
-            </p>
-          ) : (
-            <span className="w-fit rounded-full bg-green-100 px-3 py-1.5 text-sm font-medium text-green-700">
-              LKR {monthlyState.collectedThisMonth.toLocaleString()} collected
-            </span>
+            </>
           )}
 
           {monthlyState.students.length === 0 ? (
