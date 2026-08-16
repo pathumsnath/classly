@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireSession } from "@/lib/auth/require-owner";
 import { GRADE_OPTIONS, MEDIUM_OPTIONS } from "@/lib/classes/labels";
+import { generateFeesForClass } from "@/lib/fees/generate";
+import { monthOfDate } from "@/lib/time";
 import type { FeeType, TutorPaymentModel, GradeLevel, ClassMedium } from "@/lib/supabase/types";
 
 export interface ActionResult {
@@ -181,6 +183,13 @@ export async function createClass(_prevState: ActionResult, formData: FormData):
 
   if (error || !data) return { error: `Could not create class: ${error?.message}` };
 
+  // Session-cycle billing bills its (first) open cycle immediately, the
+  // same prepay principle as calendar billing generating on the 1st —
+  // idempotent, so this is harmless if the cycle's fee already exists.
+  if (parsed.billingCycleSessions !== null && parsed.cycleStartDate) {
+    await generateFeesForClass(data.id, monthOfDate(parsed.cycleStartDate), parsed.cycleStartDate);
+  }
+
   revalidatePath("/classes");
   return { success: true, classId: data.id };
 }
@@ -222,6 +231,12 @@ export async function updateClass(_prevState: ActionResult, formData: FormData):
     .eq("institute_id", session.instituteId);
 
   if (error) return { error: `Could not update class: ${error.message}` };
+
+  // Covers turning cycle billing on for an existing class — bills its
+  // currently open cycle immediately if it hasn't been already.
+  if (parsed.billingCycleSessions !== null && parsed.cycleStartDate) {
+    await generateFeesForClass(classId, monthOfDate(parsed.cycleStartDate), parsed.cycleStartDate);
+  }
 
   revalidatePath(`/classes/${classId}`);
   return { success: true };

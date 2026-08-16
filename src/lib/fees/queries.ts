@@ -43,6 +43,7 @@ async function toFeeRows(
     balance: number;
     status: PaymentStatus;
     paid_date: string | null;
+    cycle_started_at: string;
   }[],
 ): Promise<FeeRow[]> {
   if (payments.length === 0) return [];
@@ -52,7 +53,10 @@ async function toFeeRows(
 
   const [{ data: students }, { data: classes }] = await Promise.all([
     supabase.from("users").select("id, name, phone").in("id", studentIds),
-    supabase.from("classes").select("id, subject_id, tutor_id, group_name, billing_cycle_sessions").in("id", classIds),
+    supabase
+      .from("classes")
+      .select("id, subject_id, tutor_id, group_name, billing_cycle_sessions, cycle_started_at")
+      .in("id", classIds),
   ]);
 
   const tutorIds = [...new Set((classes ?? []).map((c) => c.tutor_id))];
@@ -74,13 +78,14 @@ async function toFeeRows(
     (classes ?? []).map((c) => [c.id, tutorNameById.get(c.tutor_id) ?? "Unknown"]),
   );
   const groupNameByClassId = new Map((classes ?? []).map((c) => [c.id, c.group_name]));
-  const cycleBilledByClassId = new Map((classes ?? []).map((c) => [c.id, c.billing_cycle_sessions !== null]));
+  const classById = new Map((classes ?? []).map((c) => [c.id, c]));
 
   const currentMonth = currentMonthInColombo();
 
   const rows: FeeRow[] = payments.map((p) => {
     const student = studentById.get(p.student_id);
-    const isOverdue = computeIsOverdue(p.status, p.month, currentMonth, cycleBilledByClassId.get(p.class_id) ?? false);
+    const cls = classById.get(p.class_id) ?? { billing_cycle_sessions: null, cycle_started_at: null };
+    const isOverdue = computeIsOverdue(p.status, p, cls, currentMonth);
     return {
       id: p.id,
       studentId: p.student_id,
@@ -112,7 +117,7 @@ export async function listFees(): Promise<FeeRow[]> {
 
   const { data } = await supabase
     .from("payments")
-    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date")
+    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date, cycle_started_at")
     .eq("institute_id", session.instituteId);
 
   return toFeeRows(supabase, data ?? []);
@@ -124,7 +129,7 @@ export async function listFeesForStudent(studentId: string): Promise<FeeRow[]> {
 
   const { data } = await supabase
     .from("payments")
-    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date")
+    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date, cycle_started_at")
     .eq("institute_id", session.instituteId)
     .eq("student_id", studentId);
 
@@ -137,7 +142,7 @@ export async function listFeesForStudentInClass(studentId: string, classId: stri
 
   const { data } = await supabase
     .from("payments")
-    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date")
+    .select("id, student_id, class_id, month, amount_due, amount_paid, balance, status, paid_date, cycle_started_at")
     .eq("institute_id", session.instituteId)
     .eq("student_id", studentId)
     .eq("class_id", classId);

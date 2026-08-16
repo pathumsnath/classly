@@ -26,10 +26,16 @@ function nextDay(date: string): string {
 }
 
 // Some tutors don't bill by calendar month — a class opted into
-// session-cycle billing (classes.billing_cycle_sessions set) generates
-// its fee once that many distinct session dates have attendance recorded
-// since the cycle last closed, not on a fixed date. Runs after every
-// attendance submit; a no-op for the (default) calendar-month classes.
+// session-cycle billing (classes.billing_cycle_sessions set) bills a
+// cycle's fee the moment that cycle *starts*, same principle as
+// calendar-month billing generating on the 1st before that month's
+// classes happen, not once they're delivered. A cycle "closing" (its
+// Nth session's attendance just landed) means the next cycle starts
+// right now, so this bills that next cycle immediately and rolls
+// cycle_started_at forward to it. The very first cycle is billed
+// separately, when cycle billing is turned on (see classes/actions.ts).
+// Runs after every attendance submit; a no-op for the (default)
+// calendar-month classes.
 async function maybeCloseBillingCycle(
   admin: ReturnType<typeof createAdminClient>,
   classId: string,
@@ -52,8 +58,9 @@ async function maybeCloseBillingCycle(
   if (distinctDates.length < cls.billing_cycle_sessions) return false;
 
   const lastSessionDate = distinctDates[distinctDates.length - 1];
-  await generateFeesForClass(classId, monthOfDate(lastSessionDate));
-  await admin.from("classes").update({ cycle_started_at: nextDay(lastSessionDate) }).eq("id", classId);
+  const nextCycleStart = nextDay(lastSessionDate);
+  await generateFeesForClass(classId, monthOfDate(nextCycleStart), nextCycleStart);
+  await admin.from("classes").update({ cycle_started_at: nextCycleStart }).eq("id", classId);
 
   return true;
 }

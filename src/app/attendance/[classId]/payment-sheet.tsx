@@ -65,7 +65,7 @@ export function PaymentSheet({
                   defaultChecked
                   className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
                 />
-                <span className="flex-1">{p.month.slice(0, 7)}</span>
+                <span className="flex-1">{p.label}</span>
                 <input
                   type="number"
                   name={`amount_${p.id}`}

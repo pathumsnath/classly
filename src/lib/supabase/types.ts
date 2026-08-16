@@ -274,6 +274,7 @@ export interface Database {
           student_id: string;
           class_id: string;
           month: string;
+          cycle_started_at: string;
           amount_due: number;
           amount_paid: number;
           balance: number;
@@ -290,6 +291,7 @@ export interface Database {
           student_id: string;
           class_id: string;
           month: string;
+          cycle_started_at: string;
           amount_due: number;
           amount_paid?: number;
           status?: PaymentStatus;

@@ -125,8 +125,7 @@ export function AttendanceForm({
         </p>
         {state.cycleCompleted && (
           <p className="rounded-lg bg-indigo-50 px-3 py-2 text-sm text-indigo-700">
-            That was this class&apos;s {cycleProgress?.sessionsRequired ?? "final"}th session this cycle — the fee
-            for every enrolled student was just generated.
+            That was this cycle&apos;s final session — the fee for the next cycle has been billed.
           </p>
         )}
         <AbsenceAlertPanel classId={classId} date={date} absentCount={counts.absent} />
@@ -148,7 +147,6 @@ export function AttendanceForm({
           <p className="w-fit rounded-full bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700">
             Session {Math.min(cycleProgress.sessionsSoFar + 1, cycleProgress.sessionsRequired)} of{" "}
             {cycleProgress.sessionsRequired} this billing cycle
-            {cycleProgress.sessionsSoFar + 1 >= cycleProgress.sessionsRequired && " — submitting bills this cycle"}
           </p>
         )}
 

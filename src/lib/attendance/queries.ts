@@ -97,6 +97,16 @@ export interface OutstandingPayment {
   id: string;
   month: string;
   balance: number;
+  // What to show the person recording a payment. For a calendar-billed
+  // class this is just the month ("2026-08"). For a session-cycle billed
+  // class, month alone can't tell two cycles apart (see migration
+  // 0011/0012 — different cycles can share a month bucket), so this is
+  // the cycle's own start date instead ("Cycle from Jul 21").
+  label: string;
+}
+
+function formatCycleDate(date: string): string {
+  return new Date(`${date}T00:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
 }
 
 export interface AttendanceStudentRow {
@@ -197,7 +207,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     // not just the one being viewed, and not other classes.
     supabase
       .from("payments")
-      .select("id, student_id, status, balance, month")
+      .select("id, student_id, status, balance, month, cycle_started_at")
       .eq("class_id", classId)
       .in("student_id", studentIds),
     getWalletBalancesByStudent(supabase, session.instituteId, studentIds),
@@ -212,6 +222,7 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
     status: "pending" | "partial" | "paid" | "overdue" | "waived";
     balance: number;
     month: string;
+    cycle_started_at: string;
   }
 
   const paymentsByStudent = new Map<string, PaymentRow[]>();
@@ -233,8 +244,16 @@ export async function getClassAttendanceState(classId: string, date: string): Pr
       status: attendanceByEnrollment.get(e.id) ?? null,
       hasFeeRecords: studentPayments.length > 0,
       feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
-      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth, cls.billing_cycle_sessions !== null)),
-      outstandingPayments: outstanding.map((p) => ({ id: p.id, month: p.month, balance: p.balance })),
+      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p, cls, currentMonth)),
+      outstandingPayments: outstanding.map((p) => ({
+        id: p.id,
+        month: p.month,
+        balance: p.balance,
+        label:
+          cls.billing_cycle_sessions !== null
+            ? `Cycle from ${formatCycleDate(p.cycle_started_at)}`
+            : p.month.slice(0, 7),
+      })),
       walletBalance: walletBalances.get(e.student_id) ?? 0,
     };
   });
@@ -447,7 +466,7 @@ export async function getClassAttendanceForMonth(
       .in("date", sessionDates),
     supabase
       .from("payments")
-      .select("student_id, status, balance, month, amount_paid")
+      .select("student_id, status, balance, month, amount_paid, cycle_started_at")
       .eq("class_id", classId)
       .in("student_id", studentIds),
   ]);
@@ -470,6 +489,7 @@ export async function getClassAttendanceForMonth(
     balance: number;
     month: string;
     amount_paid: number;
+    cycle_started_at: string;
   }
   const paymentsByStudent = new Map<string, PaymentRow[]>();
   for (const p of (payments ?? []) as PaymentRow[]) {
@@ -496,7 +516,7 @@ export async function getClassAttendanceForMonth(
       phone: studentById.get(e.student_id)?.phone ?? "",
       hasFeeRecords: studentPayments.length > 0,
       feeBalance: outstanding.reduce((sum, p) => sum + p.balance, 0),
-      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p.month, currentMonth, cls.billing_cycle_sessions !== null)),
+      feeIsOverdue: outstanding.some((p) => isOverdue(p.status, p, cls, currentMonth)),
       statusByDate,
     };
   });

@@ -63,9 +63,7 @@ export function CycleHeader({
           {cycleProgress.sessionsRequired}
         </span>
         <p className="text-sm text-gray-500">
-          {isClosed
-            ? "This cycle is complete — fees have been generated."
-            : `Fee generates once session ${cycleProgress.sessionsRequired} is marked.`}
+          {isClosed ? "This cycle is complete." : "Fee for this cycle was billed at the start."}
         </p>
       </div>
     </>
