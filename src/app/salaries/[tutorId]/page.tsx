@@ -78,7 +78,14 @@ export default async function TutorSalaryPage({
                 </div>
                 {c.outstandingFees !== null && c.outstandingFees > 0 && (
                   <div className="flex justify-between pl-3 text-amber-700">
-                    <span>Outstanding (unpaid) — your cut if collected</span>
+                    <span>
+                      Outstanding (unpaid) — your cut if collected
+                      {c.outstandingCycleCount !== null && c.outstandingCycleCount > 1 && (
+                        <span className="block text-xs font-normal text-amber-600">
+                          Spans {c.outstandingCycleCount} unpaid billing cycles, not one large bill
+                        </span>
+                      )}
+                    </span>
                     <span>
                       LKR {c.outstandingFees.toFixed(2)} → LKR {((c.outstandingFees * c.value) / 100).toFixed(2)}
                     </span>

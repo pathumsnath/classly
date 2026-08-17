@@ -34,11 +34,11 @@ async function revenueShareFigures(
   supabase: SupabaseClient,
   classId: string,
   month: string,
-): Promise<{ collectedThisMonth: number; overdueReceived: number; outstanding: number }> {
+): Promise<{ collectedThisMonth: number; overdueReceived: number; outstanding: number; outstandingCycleCount: number }> {
   const { start, end } = monthDateRange(month);
   const { data } = await supabase
     .from("payments")
-    .select("amount_paid, balance, status, month, paid_date")
+    .select("amount_paid, balance, status, month, paid_date, cycle_started_at")
     .eq("class_id", classId);
   const rows = data ?? [];
 
@@ -52,11 +52,17 @@ async function revenueShareFigures(
     .filter((p) => p.month !== month)
     .reduce((sum, p) => sum + p.amount_paid, 0);
 
-  const outstanding = rows
-    .filter((p) => p.status === "pending" || p.status === "partial")
-    .reduce((sum, p) => sum + p.balance, 0);
+  const outstandingRows = rows.filter((p) => p.status === "pending" || p.status === "partial");
+  const outstanding = outstandingRows.reduce((sum, p) => sum + p.balance, 0);
+  // Session-cycle classes can have unpaid balances spanning more than one
+  // billing cycle at once (each cycle bills upfront the moment it starts —
+  // see maybeCloseBillingCycle) — distinguishing that from a single large
+  // unpaid fee is what the UI needs to avoid this looking like a duplicate.
+  const outstandingCycleCount = new Set(
+    outstandingRows.filter((p) => p.cycle_started_at !== null).map((p) => p.cycle_started_at),
+  ).size;
 
-  return { collectedThisMonth, overdueReceived, outstanding };
+  return { collectedThisMonth, overdueReceived, outstanding, outstandingCycleCount };
 }
 
 // A session "happened" if any attendance was recorded for that date,
@@ -95,6 +101,12 @@ export interface ClassSalaryBreakdown {
   // class across every month, so the UI can show the tutor's potential
   // cut once it's eventually collected.
   outstandingFees: number | null;
+  // Only meaningful for revenue_share — how many distinct session-cycles
+  // (see billingCycleSessions) the outstandingFees total spans. 0 or 1 for
+  // an ordinary calendar-billed class or a cycle class with just one
+  // unpaid period; >1 means it's genuinely two-or-more separate unpaid
+  // bills stacked together, not one number that looks too big.
+  outstandingCycleCount: number | null;
 }
 
 // FR-7.5 — one class's contribution to its tutor's salary for a month.
@@ -125,6 +137,7 @@ export async function calculateClassSalary(
   let collected: number | null = null;
   let overdueReceived: number | null = null;
   let outstanding: number | null = null;
+  let outstandingCycleCount: number | null = null;
   let value = cls.tutor_payment_value;
 
   switch (cls.tutor_payment_model) {
@@ -134,6 +147,7 @@ export async function calculateClassSalary(
       collected = figures.collectedThisMonth + figures.overdueReceived;
       overdueReceived = figures.overdueReceived;
       outstanding = figures.outstanding;
+      outstandingCycleCount = figures.outstandingCycleCount;
       amount = collected * (value / 100);
       break;
     }
@@ -160,5 +174,6 @@ export async function calculateClassSalary(
     collectedFees: collected,
     overdueReceived,
     outstandingFees: outstanding,
+    outstandingCycleCount,
   };
 }
