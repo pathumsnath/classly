@@ -6,6 +6,15 @@ import { Search } from "lucide-react";
 import { Card } from "@/components/card";
 import type { TutorSalary } from "@/lib/salaries/queries";
 
+// A tutor's revenue-share rate is uniform across all their revenue_share
+// classes (one commission — institute default or their own override —
+// applies to all of them), so any one of those classes' `value` shows it.
+// Null if this tutor has no revenue_share classes at all.
+function revenueShareRate(salary: TutorSalary): number | null {
+  const revenueShareClass = salary.classes.find((c) => c.model === "revenue_share");
+  return revenueShareClass ? revenueShareClass.value : null;
+}
+
 export function SalaryList({ salaries, month }: { salaries: TutorSalary[]; month: string }) {
   const [query, setQuery] = useState("");
 
@@ -28,28 +37,34 @@ export function SalaryList({ salaries, month }: { salaries: TutorSalary[]; month
         <p className="px-1 text-sm text-gray-500">No tutors match &ldquo;{query}&rdquo;.</p>
       ) : (
         <Card className="divide-y divide-gray-100">
-          {visibleSalaries.map((s) => (
-            <Link
-              key={s.tutorId}
-              href={`/salaries/${s.tutorId}?month=${month}`}
-              className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
-            >
-              <div>
-                <p className="font-medium text-gray-900">{s.tutorName}</p>
-                <p className="text-sm text-gray-500">{s.classes.length} class(es)</p>
-              </div>
-              <div className="flex shrink-0 items-center gap-3">
-                <p className="font-medium text-gray-900">LKR {s.netTotal.toFixed(2)}</p>
-                <span
-                  className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                    s.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                  }`}
-                >
-                  {s.status === "paid" ? "Paid" : "Unpaid"}
-                </span>
-              </div>
-            </Link>
-          ))}
+          {visibleSalaries.map((s) => {
+            const rate = revenueShareRate(s);
+            return (
+              <Link
+                key={s.tutorId}
+                href={`/salaries/${s.tutorId}?month=${month}`}
+                className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
+              >
+                <div>
+                  <p className="font-medium text-gray-900">{s.tutorName}</p>
+                  <p className="text-sm text-gray-500">
+                    {s.classes.length} class(es)
+                    {rate !== null && ` · ${rate}% share`}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-3">
+                  <p className="font-medium text-gray-900">LKR {s.netTotal.toFixed(2)}</p>
+                  <span
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                      s.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {s.status === "paid" ? "Paid" : "Unpaid"}
+                  </span>
+                </div>
+              </Link>
+            );
+          })}
         </Card>
       )}
     </div>
