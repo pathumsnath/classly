@@ -9,6 +9,9 @@ export interface TutorRow {
   phone: string;
   email: string | null;
   status: TutorStatus;
+  // Null = this tutor's revenue_share classes use the institute-wide
+  // commission rate. Set = they use this rate instead (see calculateClassSalary).
+  commissionOverridePercent: number | null;
 }
 
 export interface StudentRow {
@@ -38,7 +41,7 @@ export async function listTutors(): Promise<TutorRow[]> {
 
   const { data: links } = await supabase
     .from("institute_tutors")
-    .select("tutor_id, status")
+    .select("tutor_id, status, commission_override_percent")
     .eq("institute_id", session.instituteId)
     .order("created_at", { ascending: true });
 
@@ -57,8 +60,25 @@ export async function listTutors(): Promise<TutorRow[]> {
   return links.flatMap((link) => {
     const person = byId.get(link.tutor_id);
     if (!person) return [];
-    return [{ id: person.id, name: person.name, phone: person.phone, email: person.email, status: link.status }];
+    return [
+      {
+        id: person.id,
+        name: person.name,
+        phone: person.phone,
+        email: person.email,
+        status: link.status,
+        commissionOverridePercent: link.commission_override_percent,
+      },
+    ];
   });
+}
+
+// Owner-only edit form data for one tutor — institute-scoped via
+// institute_tutors, so an owner can't fetch a tutor from another institute
+// by guessing an id.
+export async function getTutorForEdit(tutorId: string): Promise<TutorRow | null> {
+  const tutors = await listTutors();
+  return tutors.find((t) => t.id === tutorId) ?? null;
 }
 
 export async function listStudents(): Promise<StudentRow[]> {

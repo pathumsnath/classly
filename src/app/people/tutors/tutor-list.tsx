@@ -42,6 +42,12 @@ export function TutorList({ tutors }: { tutors: TutorRow[] }) {
                   <p className="text-sm text-gray-500">{tutor.phone}</p>
                 </div>
               </Link>
+              <Link
+                href={`/people/tutors/${tutor.id}/edit`}
+                className="rounded-lg px-3 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-100"
+              >
+                Edit
+              </Link>
               <form action={setTutorStatus.bind(null, tutor.id, tutor.status === "active" ? "inactive" : "active")}>
                 <button
                   type="submit"

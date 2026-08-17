@@ -106,6 +106,7 @@ export interface Database {
           tutor_id: string;
           joined_date: string | null;
           status: TutorStatus;
+          commission_override_percent: number | null;
           created_at: string;
         };
         Insert: {
@@ -114,6 +115,7 @@ export interface Database {
           tutor_id: string;
           joined_date?: string | null;
           status?: TutorStatus;
+          commission_override_percent?: number | null;
           created_at?: string;
         };
         Update: Partial<Database["public"]["Tables"]["institute_tutors"]["Insert"]>;

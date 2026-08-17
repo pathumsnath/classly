@@ -42,7 +42,7 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
 
   let tutorLinksQuery = supabase
     .from("institute_tutors")
-    .select("tutor_id")
+    .select("tutor_id, commission_override_percent")
     .eq("institute_id", session.instituteId)
     .eq("status", "active");
   if (filterTutorIds) tutorLinksQuery = tutorLinksQuery.in("tutor_id", filterTutorIds);
@@ -75,7 +75,10 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
       supabase.from("institutes").select("revenue_share_commission_percent").eq("id", session.instituteId).single(),
     ]);
 
-  const revenueShareCommissionPercent = institute?.revenue_share_commission_percent ?? 25;
+  const defaultCommissionPercent = institute?.revenue_share_commission_percent ?? 25;
+  const commissionOverrideByTutor = new Map(
+    tutorLinks.map((t) => [t.tutor_id, t.commission_override_percent]),
+  );
 
   const subjectNames = await subjectNamesById(
     supabase,
@@ -97,6 +100,7 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
   const results = await Promise.all(
     tutorIds.map(async (tutorId) => {
       const tutorClasses = (classes ?? []).filter((c) => c.tutor_id === tutorId);
+      const revenueShareCommissionPercent = commissionOverrideByTutor.get(tutorId) ?? defaultCommissionPercent;
       const breakdown = await Promise.all(
         tutorClasses.map((c) =>
           calculateClassSalary(

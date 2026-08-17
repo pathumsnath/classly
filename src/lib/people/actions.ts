@@ -105,7 +105,7 @@ export async function addTutor(_prevState: ActionResult, formData: FormData): Pr
 }
 
 export async function updateTutor(_prevState: ActionResult, formData: FormData): Promise<ActionResult> {
-  await requireSession();
+  const session = await requireSession();
 
   const tutorId = String(formData.get("tutorId") || "");
   const name = String(formData.get("name") || "").trim();
@@ -116,15 +116,34 @@ export async function updateTutor(_prevState: ActionResult, formData: FormData):
     return { error: "Name and phone are required." };
   }
 
+  const overrideEnabled = formData.get("commissionOverrideEnabled") === "on";
+  const commissionOverrideRaw = String(formData.get("commissionOverridePercent") || "").trim();
+  let commissionOverridePercent: number | null = null;
+  if (overrideEnabled) {
+    commissionOverridePercent = Number(commissionOverrideRaw);
+    if (!commissionOverrideRaw || Number.isNaN(commissionOverridePercent) || commissionOverridePercent < 0 || commissionOverridePercent > 100) {
+      return { error: "A valid commission percent (0–100) is required when overriding." };
+    }
+  }
+
   const admin = createAdminClient();
-  const { error } = await admin
+  const { error: userError } = await admin
     .from("users")
     .update({ name, phone, email: email || null })
     .eq("id", tutorId);
 
-  if (error) return { error: `Could not update tutor: ${error.message}` };
+  if (userError) return { error: `Could not update tutor: ${userError.message}` };
+
+  const { error: linkError } = await admin
+    .from("institute_tutors")
+    .update({ commission_override_percent: commissionOverridePercent })
+    .eq("institute_id", session.instituteId)
+    .eq("tutor_id", tutorId);
+
+  if (linkError) return { error: `Could not update commission override: ${linkError.message}` };
 
   revalidatePath("/people/tutors");
+  revalidatePath(`/people/tutors/${tutorId}`);
   return { success: true };
 }
 
