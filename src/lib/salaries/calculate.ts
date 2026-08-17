@@ -1,6 +1,6 @@
 import "server-only";
 import type { createClient } from "@/lib/supabase/server";
-import type { TutorPaymentModel } from "@/lib/supabase/types";
+import type { TutorPaymentModel, GradeLevel, ClassMedium } from "@/lib/supabase/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -77,6 +77,8 @@ export interface ClassSalaryBreakdown {
   classId: string;
   subject: string;
   groupName: string | null;
+  grade: GradeLevel | null;
+  medium: ClassMedium | null;
   model: TutorPaymentModel;
   value: number;
   amount: number;
@@ -111,6 +113,8 @@ export async function calculateClassSalary(
     id: string;
     subject: string;
     groupName: string | null;
+    grade: GradeLevel | null;
+    medium: ClassMedium | null;
     tutor_payment_model: TutorPaymentModel;
     tutor_payment_value: number;
   },
@@ -148,6 +152,8 @@ export async function calculateClassSalary(
     classId: cls.id,
     subject: cls.subject,
     groupName: cls.groupName,
+    grade: cls.grade,
+    medium: cls.medium,
     model: cls.tutor_payment_model,
     value,
     amount,

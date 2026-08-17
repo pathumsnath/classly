@@ -58,7 +58,7 @@ export async function getTutorSalaries(month: string, filterTutorIds?: string[])
       supabase.from("users").select("id, name").in("id", tutorIds),
       supabase
         .from("classes")
-        .select("id, subject_id, tutor_id, tutor_payment_model, tutor_payment_value, group_name")
+        .select("id, subject_id, tutor_id, tutor_payment_model, tutor_payment_value, group_name, grade, medium")
         .eq("institute_id", session.instituteId)
         .in("tutor_id", tutorIds),
       supabase

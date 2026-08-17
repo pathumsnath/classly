@@ -3,6 +3,7 @@ import { getSessionInfo } from "@/lib/auth/session";
 import { getTutorSalary } from "@/lib/salaries/queries";
 import { markSalaryPaid, deleteTutorAdvance } from "@/lib/salaries/actions";
 import { currentMonthInColombo } from "@/lib/time";
+import { formatGrade, formatMedium } from "@/lib/classes/labels";
 import { PageShell } from "@/components/page-shell";
 import { Card } from "@/components/card";
 import { MonthSwitcher } from "@/components/month-switcher";
@@ -48,10 +49,15 @@ export default async function TutorSalaryPage({
           {salary.classes.map((c) =>
             c.model === "revenue_share" && c.collectedFees !== null ? (
               <li key={c.classId} className="flex flex-col gap-1">
-                <p className="font-medium text-gray-900">
-                  {c.subject}
-                  {c.groupName && ` (${c.groupName})`} ({c.value}% share)
-                </p>
+                <div>
+                  <p className="font-medium text-gray-900">
+                    {c.subject}
+                    {c.groupName && ` (${c.groupName})`} ({c.value}% share)
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {formatGrade(c.grade)} · {formatMedium(c.medium)}
+                  </p>
+                </div>
                 <div className="flex justify-between pl-3">
                   <span>Total income</span>
                   <span>LKR {c.collectedFees.toFixed(2)}</span>
@@ -82,8 +88,13 @@ export default async function TutorSalaryPage({
             ) : (
               <li key={c.classId} className="flex justify-between">
                 <span>
-                  {c.subject}
-                  {c.groupName && ` (${c.groupName})`} ({c.model.replace("_", " ")})
+                  <span className="block">
+                    {c.subject}
+                    {c.groupName && ` (${c.groupName})`} ({c.model.replace("_", " ")})
+                  </span>
+                  <span className="block text-xs text-gray-400">
+                    {formatGrade(c.grade)} · {formatMedium(c.medium)}
+                  </span>
                 </span>
                 <span>LKR {c.amount.toFixed(2)}</span>
               </li>
