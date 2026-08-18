@@ -135,10 +135,13 @@ export async function sendDueFeeReminders(todayColombo: string): Promise<FeeRemi
         .join(" · ");
       const groupSuffix = cls.group_name ? ` (${cls.group_name})` : "";
 
+      // Sinhala, to forward straight into a parents' WhatsApp group — the
+      // owner supplied the closing call-to-action line directly.
+      const periodLabel = cls.billing_cycle_sessions === null ? "මාසය" : "චක්‍රය";
       const message =
-        `Reminder: ${className}${groupSuffix} has its next class on ${third.date}. ` +
-        `${unpaidRows.length} student(s) still owe LKR ${unpaidTotal.toLocaleString()} for this ` +
-        `${cls.billing_cycle_sessions === null ? "month" : "cycle"} — forward to the class group?`;
+        `${className}${groupSuffix}\n` +
+        `ශිෂ්‍යයින් ${unpaidRows.length} දෙනෙකු මෙම ${periodLabel} සඳහා LKR ${unpaidTotal.toLocaleString()} ක් ගෙවිය යුතුව ඇත.\n` +
+        `හෙට දින සියලු දරුවන් පන්ති ගාස්තු ගෙවා අවසන් කරන්න.`;
 
       await sendSms({ to: owner.phone, message });
 
