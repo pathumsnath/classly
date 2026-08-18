@@ -17,13 +17,12 @@ export default async function TutorDetailPage({
   const session = await getSessionInfo();
   if (!session || session.role === "tutor") redirect("/");
 
-  const tutor = await getPerson(tutorId);
-  if (!tutor) notFound();
-
-  const [classes, salaryHistory] = await Promise.all([
+  const [tutor, classes, salaryHistory] = await Promise.all([
+    getPerson(tutorId),
     listClassesForTutor(tutorId),
     session?.role === "owner" ? listSalaryPaymentsForTutor(tutorId) : Promise.resolve(null),
   ]);
+  if (!tutor) notFound();
 
   return (
     <PageShell title={tutor.name} backHref="/people/tutors">

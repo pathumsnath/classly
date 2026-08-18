@@ -225,21 +225,27 @@ export default async function DashboardPage() {
   }
 
   const isOwner = session.role === "owner";
-  const [todaysClasses, activeTutors, allStudents, allFees, commissionPercent] = await Promise.all([
+  // Wallet balances need active student IDs first, but that dependency
+  // only reaches back to listStudents() — chaining off its own promise
+  // lets the balance lookup run alongside the other four queries instead
+  // of waiting for the whole batch to finish first.
+  const studentsPromise = listStudents();
+  const [todaysClasses, activeTutors, allStudents, allFees, commissionPercent, walletBalancesRaw] = await Promise.all([
     getTodaysClasses(),
     isOwner ? listTutors() : Promise.resolve([]),
-    listStudents(),
+    studentsPromise,
     listFees(),
     isOwner ? getRevenueShareCommissionPercent() : Promise.resolve(null),
+    studentsPromise.then((students) =>
+      getWalletBalancesForStudents(students.filter((s) => s.status === "active").map((s) => s.id)),
+    ),
   ]);
   const navItems = isOwner ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
   const tutorOptions = activeTutors.filter((t) => t.status === "active").map((t) => ({ id: t.id, name: t.name }));
   const studentOptions = allStudents
     .filter((s) => s.status === "active")
     .map((s) => ({ id: s.id, name: s.name, phone: s.phone }));
-  const walletBalances = Object.fromEntries(
-    await getWalletBalancesForStudents(studentOptions.map((s) => s.id)),
-  );
+  const walletBalances = Object.fromEntries(walletBalancesRaw);
 
   return (
     <main className="min-h-full flex-1 bg-gray-50">

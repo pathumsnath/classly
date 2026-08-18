@@ -12,19 +12,25 @@ import { EnrollForm } from "./enroll-form";
 
 export default async function ClassDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const cls = await getClass(id);
-  if (!cls) notFound();
-
-  const [enrolled, allStudents, commissionPercent] = await Promise.all([
+  // commissionPercent is fetched unconditionally (a cheap single-row
+  // lookup) so this doesn't have to wait on cls to decide whether it's
+  // needed — that dependency would otherwise force a second round trip
+  // after the first one resolves.
+  const [cls, enrolled, allStudents, commissionPercent] = await Promise.all([
+    getClass(id),
     listEnrolledStudents(id),
     listStudents(),
-    cls.tutorPaymentModel === "revenue_share" ? getRevenueShareCommissionPercent() : Promise.resolve(null),
+    getRevenueShareCommissionPercent(),
   ]);
+  if (!cls) notFound();
 
   // For revenue_share, the institute-wide commission rate overrides this
   // class's own stored tutor_payment_value (see calculateClassSalary) —
   // show the effective share, not the stale per-class number.
-  const tutorPaymentValue = commissionPercent !== null ? 100 - commissionPercent : cls.tutorPaymentValue;
+  const tutorPaymentValue =
+    cls.tutorPaymentModel === "revenue_share" && commissionPercent !== null
+      ? 100 - commissionPercent
+      : cls.tutorPaymentValue;
 
   const activeEnrolled = enrolled.filter((e) => e.status === "active");
   const activeEnrolledIds = new Set(activeEnrolled.map((e) => e.id));

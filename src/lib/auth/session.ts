@@ -14,20 +14,21 @@ export interface SessionInfo {
 
 // Backed by the get_current_session() SQL function (0001_init.sql), which
 // resolves auth.uid() -> users -> user_roles -> institutes in one call.
+// auth.uid() comes from the request's own JWT (verified by PostgREST when
+// the RPC call arrives) — it doesn't need a prior supabase.auth.getUser()
+// call to establish that, so this skips straight to the RPC instead of
+// paying for two round trips (getUser(), then the RPC) to do one check.
+// No session/expired/deleted user all fall through the same way: the RPC
+// returns no row, .single() errors, and this returns null.
 //
 // Wrapped in React's cache() — nearly every page-level query function
 // calls requireSession()/requireOwner() independently (defense in depth,
-// see plan), and each call was re-running both the Supabase Auth check
-// and this RPC from scratch. A page composing 3-4 queries in parallel was
-// making 3-4x the actual session round trips. cache() dedupes all of that
-// to a single resolution per request, since this function takes no args.
+// see plan), and each call was re-running this RPC from scratch. A page
+// composing 3-4 queries in parallel was making 3-4x the actual session
+// round trips. cache() dedupes all of that to a single resolution per
+// request, since this function takes no args.
 export const getSessionInfo = cache(async (): Promise<SessionInfo | null> => {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
-
   const { data, error } = await supabase.rpc("get_current_session").single();
   if (error || !data) return null;
 

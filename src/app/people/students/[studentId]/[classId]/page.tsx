@@ -17,13 +17,13 @@ export default async function StudentClassDetailPage({
   const session = await getSessionInfo();
   if (!session || session.role === "tutor") redirect("/");
 
-  const [student, cls] = await Promise.all([getPerson(studentId), getClass(classId)]);
-  if (!student || !cls) notFound();
-
-  const [fees, attendance] = await Promise.all([
+  const [student, cls, fees, attendance] = await Promise.all([
+    getPerson(studentId),
+    getClass(classId),
     listFeesForStudentInClass(studentId, classId),
     listAttendanceForStudentInClass(studentId, classId),
   ]);
+  if (!student || !cls) notFound();
 
   const sortedFees = [...fees].sort((a, b) => b.month.localeCompare(a.month));
 

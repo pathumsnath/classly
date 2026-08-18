@@ -11,10 +11,9 @@ export default async function EditClassPage({ params }: { params: Promise<{ id: 
   const session = await getSessionInfo();
   if (!session || session.role === "tutor") redirect("/");
 
-  const cls = await getClass(id);
+  const [cls, tutors, subjects] = await Promise.all([getClass(id), listTutors(), listSubjects()]);
   if (!cls) notFound();
 
-  const [tutors, subjects] = await Promise.all([listTutors(), listSubjects()]);
   const activeTutors = tutors.filter((t) => t.status === "active");
   const activeSubjects = subjects.filter((s) => s.status === "active");
 

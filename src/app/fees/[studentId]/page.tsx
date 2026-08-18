@@ -26,10 +26,12 @@ export default async function StudentFeesPage({
   const session = await getSessionInfo();
   if (!session || session.role === "tutor") redirect("/");
 
-  const student = await getPerson(studentId);
+  const [student, fees, walletBalance] = await Promise.all([
+    getPerson(studentId),
+    listFeesForStudent(studentId),
+    getWalletBalance(studentId),
+  ]);
   if (!student) notFound();
-
-  const [fees, walletBalance] = await Promise.all([listFeesForStudent(studentId), getWalletBalance(studentId)]);
 
   return (
     <PageShell title={student.name} backHref="/fees">

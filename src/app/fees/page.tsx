@@ -29,12 +29,19 @@ export default async function FeesPage({ searchParams }: { searchParams: Promise
   if (!session || session.role === "tutor") redirect("/");
 
   const { q } = await searchParams;
-  const [fees, allStudents] = await Promise.all([listFees(), listStudents()]);
+  const studentsPromise = listStudents();
+  const [fees, allStudents, walletBalancesRaw] = await Promise.all([
+    listFees(),
+    studentsPromise,
+    studentsPromise.then((students) =>
+      getWalletBalancesForStudents(students.filter((s) => s.status === "active").map((s) => s.id)),
+    ),
+  ]);
 
   const studentOptions = allStudents
     .filter((s) => s.status === "active")
     .map((s) => ({ id: s.id, name: s.name, phone: s.phone }));
-  const walletBalances = Object.fromEntries(await getWalletBalancesForStudents(studentOptions.map((s) => s.id)));
+  const walletBalances = Object.fromEntries(walletBalancesRaw);
 
   let searchResults: { id: string; name: string; phone: string }[] = [];
   if (q?.trim()) {
