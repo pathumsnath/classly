@@ -8,6 +8,7 @@ import { listClassesForTutor } from "@/lib/classes/queries";
 import { getTutorSalary, getTutorIncomeTrend } from "@/lib/salaries/queries";
 import { listTutors, listStudents } from "@/lib/people/queries";
 import { listFees } from "@/lib/fees/queries";
+import { getDueFeeReminders } from "@/lib/fees/reminders";
 import { getWalletBalancesForStudents } from "@/lib/wallet/queries";
 import { getRevenueShareCommissionPercent } from "@/lib/institute/queries";
 import { formatGrade, formatMedium, formatTime } from "@/lib/classes/labels";
@@ -19,6 +20,7 @@ import { AdvanceQuickForm } from "./advance-quick-form";
 import { RecordFeePaymentForm } from "./record-fee-payment-form";
 import { IncomeTrendChart } from "./income-trend-chart";
 import { CommissionRateForm } from "./commission-rate-form";
+import { FeeReminders } from "./fee-reminders";
 
 const BUCKET_STYLES: Record<string, { dot: string; button: string; label: string }> = {
   now: { dot: "bg-green-500", button: "bg-indigo-600 text-white hover:bg-indigo-500", label: "Mark attendance" },
@@ -230,16 +232,18 @@ export default async function DashboardPage() {
   // lets the balance lookup run alongside the other four queries instead
   // of waiting for the whole batch to finish first.
   const studentsPromise = listStudents();
-  const [todaysClasses, activeTutors, allStudents, allFees, commissionPercent, walletBalancesRaw] = await Promise.all([
-    getTodaysClasses(),
-    isOwner ? listTutors() : Promise.resolve([]),
-    studentsPromise,
-    listFees(),
-    isOwner ? getRevenueShareCommissionPercent() : Promise.resolve(null),
-    studentsPromise.then((students) =>
-      getWalletBalancesForStudents(students.filter((s) => s.status === "active").map((s) => s.id)),
-    ),
-  ]);
+  const [todaysClasses, activeTutors, allStudents, allFees, commissionPercent, walletBalancesRaw, feeReminders] =
+    await Promise.all([
+      getTodaysClasses(),
+      isOwner ? listTutors() : Promise.resolve([]),
+      studentsPromise,
+      listFees(),
+      isOwner ? getRevenueShareCommissionPercent() : Promise.resolve(null),
+      studentsPromise.then((students) =>
+        getWalletBalancesForStudents(students.filter((s) => s.status === "active").map((s) => s.id)),
+      ),
+      isOwner ? getDueFeeReminders(session.instituteId) : Promise.resolve([]),
+    ]);
   const navItems = isOwner ? [...NAV_ITEMS, ...OWNER_NAV_ITEMS] : NAV_ITEMS;
   const tutorOptions = activeTutors.filter((t) => t.status === "active").map((t) => ({ id: t.id, name: t.name }));
   const studentOptions = allStudents
@@ -271,6 +275,8 @@ export default async function DashboardPage() {
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">Today&apos;s classes</h2>
           <TodaysClassesList classes={todaysClasses} showAddLink />
         </section>
+
+        {isOwner && <FeeReminders reminders={feeReminders} />}
 
         {studentOptions.length > 0 && (
           <section className="px-4 sm:px-6">

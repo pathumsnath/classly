@@ -1,9 +1,8 @@
 import "server-only";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { scheduledDatesInMonth } from "@/lib/attendance/session-dates";
-import { sendSms } from "@/lib/sms";
 import { formatGrade, formatMedium } from "@/lib/classes/labels";
-import { currentMonthInColombo } from "@/lib/time";
+import { currentMonthInColombo, todayInColombo } from "@/lib/time";
 
 type AdminClient = ReturnType<typeof createAdminClient>;
 
@@ -72,87 +71,69 @@ async function thirdSessionOfPeriod(
   return { date: dates[2], periodKey: cls.cycle_started_at };
 }
 
-export interface FeeReminderResult {
-  sent: number;
+export interface DueFeeReminder {
+  classId: string;
+  className: string;
+  sessionDate: string;
+  unpaidCount: number;
+  unpaidTotal: number;
+  message: string;
 }
 
-// Runs daily (see /api/cron/fee-reminders). For every active class whose
-// 3rd scheduled session of the current billing period falls tomorrow,
-// texts the institute owner a ready-to-forward fee-settlement reminder —
-// one message per class, timed a day ahead so there's still a chance to
-// collect before that session. Idempotent per (class, period) via
-// fee_reminder_sends, so a cron re-run on the same day is harmless.
-export async function sendDueFeeReminders(todayColombo: string): Promise<FeeReminderResult> {
+// Classes whose 3rd scheduled session of the current billing period (a
+// month, or a session-cycle) falls tomorrow, with at least one student
+// still owing money for it — shown on the owner's dashboard the day
+// before, so there's still a chance to collect before that session. A
+// class naturally drops off this list once the day passes or its balance
+// is fully paid, so there's no separate "dismiss"/"sent" state to track.
+export async function getDueFeeReminders(instituteId: string): Promise<DueFeeReminder[]> {
   const admin = createAdminClient();
-  const tomorrow = addDays(todayColombo, 1);
+  const tomorrow = addDays(todayInColombo(), 1);
 
-  const { data: institutes } = await admin.from("institutes").select("id, name");
-  let sent = 0;
+  const { data: classes } = await admin
+    .from("classes")
+    .select("id, subject_id, grade, medium, group_name, schedule_days, billing_cycle_sessions, cycle_started_at")
+    .eq("institute_id", instituteId);
 
-  for (const institute of institutes ?? []) {
-    const { data: ownerRole } = await admin
-      .from("user_roles")
-      .select("user_id")
-      .eq("institute_id", institute.id)
-      .eq("role", "owner")
-      .limit(1)
-      .maybeSingle();
-    if (!ownerRole) continue;
+  const reminders: DueFeeReminder[] = [];
 
-    const { data: owner } = await admin.from("users").select("phone").eq("id", ownerRole.user_id).maybeSingle();
-    if (!owner?.phone) continue;
+  for (const cls of classes ?? []) {
+    const third = await thirdSessionOfPeriod(admin, cls);
+    if (!third || third.date !== tomorrow) continue;
 
-    const { data: classes } = await admin
-      .from("classes")
-      .select("id, subject_id, grade, medium, group_name, schedule_days, billing_cycle_sessions, cycle_started_at")
-      .eq("institute_id", institute.id);
+    const { data: outstandingPayments } = await admin
+      .from("payments")
+      .select("balance")
+      .eq("class_id", cls.id)
+      .eq(cls.billing_cycle_sessions === null ? "month" : "cycle_started_at", third.periodKey)
+      .in("status", ["pending", "partial"]);
+    const unpaidRows = outstandingPayments ?? [];
+    if (unpaidRows.length === 0) continue;
+    const unpaidTotal = unpaidRows.reduce((sum, p) => sum + p.balance, 0);
 
-    for (const cls of classes ?? []) {
-      const third = await thirdSessionOfPeriod(admin, cls);
-      if (!third || third.date !== tomorrow) continue;
+    const { data: subject } = await admin.from("subjects").select("name").eq("id", cls.subject_id).maybeSingle();
+    const className = [subject?.name ?? "Class", formatGrade(cls.grade), formatMedium(cls.medium)]
+      .filter(Boolean)
+      .join(" · ");
+    const groupSuffix = cls.group_name ? ` (${cls.group_name})` : "";
 
-      const { data: existing } = await admin
-        .from("fee_reminder_sends")
-        .select("id")
-        .eq("class_id", cls.id)
-        .eq("period_key", third.periodKey)
-        .maybeSingle();
-      if (existing) continue;
+    // Sinhala, meant to be forwarded straight into a parents' WhatsApp
+    // group — the closing call-to-action line was supplied directly.
+    const periodLabel = cls.billing_cycle_sessions === null ? "මාසය" : "චක්‍රය";
+    const message =
+      `${className}${groupSuffix}\n` +
+      `ශිෂ්‍යයින් ${unpaidRows.length} දෙනෙකු මෙම ${periodLabel} සඳහා LKR ${unpaidTotal.toLocaleString()} ක් ගෙවිය යුතුව ඇත.\n` +
+      `හෙට දින සියලු දරුවන් පන්ති ගාස්තු ගෙවා අවසන් කරන්න.`;
 
-      const { data: outstandingPayments } = await admin
-        .from("payments")
-        .select("balance")
-        .eq("class_id", cls.id)
-        .eq(cls.billing_cycle_sessions === null ? "month" : "cycle_started_at", third.periodKey)
-        .in("status", ["pending", "partial"]);
-      const unpaidRows = outstandingPayments ?? [];
-      if (unpaidRows.length === 0) continue;
-      const unpaidTotal = unpaidRows.reduce((sum, p) => sum + p.balance, 0);
-
-      const { data: subject } = await admin.from("subjects").select("name").eq("id", cls.subject_id).maybeSingle();
-      const className = [subject?.name ?? "Class", formatGrade(cls.grade), formatMedium(cls.medium)]
-        .filter(Boolean)
-        .join(" · ");
-      const groupSuffix = cls.group_name ? ` (${cls.group_name})` : "";
-
-      // Sinhala, to forward straight into a parents' WhatsApp group — the
-      // owner supplied the closing call-to-action line directly.
-      const periodLabel = cls.billing_cycle_sessions === null ? "මාසය" : "චක්‍රය";
-      const message =
-        `${className}${groupSuffix}\n` +
-        `ශිෂ්‍යයින් ${unpaidRows.length} දෙනෙකු මෙම ${periodLabel} සඳහා LKR ${unpaidTotal.toLocaleString()} ක් ගෙවිය යුතුව ඇත.\n` +
-        `හෙට දින සියලු දරුවන් පන්ති ගාස්තු ගෙවා අවසන් කරන්න.`;
-
-      await sendSms({ to: owner.phone, message });
-
-      await admin.from("fee_reminder_sends").insert({
-        institute_id: institute.id,
-        class_id: cls.id,
-        period_key: third.periodKey,
-      });
-      sent++;
-    }
+    reminders.push({
+      classId: cls.id,
+      className: `${className}${groupSuffix}`,
+      sessionDate: third.date,
+      unpaidCount: unpaidRows.length,
+      unpaidTotal,
+      message,
+    });
   }
 
-  return { sent };
+  return reminders;
 }
