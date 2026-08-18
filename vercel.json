@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/generate-fees",
       "schedule": "35 18 * * *"
+    },
+    {
+      "path": "/api/cron/fee-reminders",
+      "schedule": "40 18 * * *"
     }
   ]
 }
