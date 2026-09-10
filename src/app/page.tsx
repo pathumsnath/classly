@@ -13,9 +13,10 @@ import { getWalletBalancesForStudents } from "@/lib/wallet/queries";
 import { getRevenueShareCommissionPercent } from "@/lib/institute/queries";
 import { formatGrade, formatMedium, formatTime } from "@/lib/classes/labels";
 import { logout } from "@/lib/auth/actions";
-import { currentMonthInColombo } from "@/lib/time";
+import { currentMonthInColombo, colomboNow } from "@/lib/time";
 import { NAV_ITEMS, OWNER_NAV_ITEMS } from "@/lib/nav-items";
-import { Card, EmptyState } from "@/components/card";
+import { subjectColor } from "@/lib/subject-colors";
+import { EmptyState } from "@/components/card";
 import { AdvanceQuickForm } from "./advance-quick-form";
 import { RecordFeePaymentForm } from "./record-fee-payment-form";
 import { IncomeTrendChart } from "./income-trend-chart";
@@ -27,6 +28,12 @@ const BUCKET_STYLES: Record<string, { dot: string; button: string; label: string
   upcoming: { dot: "bg-gray-300", button: "bg-indigo-600 text-white hover:bg-indigo-500", label: "Mark attendance" },
   done: { dot: "bg-gray-200", button: "bg-gray-100 text-gray-600 hover:bg-gray-200", label: "View" },
 };
+
+function greetingForHour(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 17) return "Good afternoon";
+  return "Good evening";
+}
 
 function TodaysClassesList({ classes, showAddLink }: { classes: TodayClassRow[]; showAddLink: boolean }) {
   if (classes.length === 0) {
@@ -44,18 +51,26 @@ function TodaysClassesList({ classes, showAddLink }: { classes: TodayClassRow[];
   }
 
   return (
-    <ul className="flex flex-col gap-2">
+    <ul className="flex flex-col gap-2.5">
       {classes.map((cls) => {
         const style = BUCKET_STYLES[cls.bucket];
+        const color = subjectColor(cls.subject);
         return (
           <li
             key={cls.id}
-            className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-sm"
+            className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md"
           >
             <div className="flex items-center gap-3">
-              <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${style.dot}`} />
+              <span
+                className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color.bg} ${color.text}`}
+              >
+                {cls.subject.slice(0, 2).toUpperCase()}
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white ${style.dot} ${cls.bucket === "now" ? "animate-pulse" : ""}`}
+                />
+              </span>
               <div>
-                <p className="font-medium text-gray-900">
+                <p className="font-semibold text-gray-900">
                   {cls.subject}
                   {cls.groupName && ` (${cls.groupName})`}
                 </p>
@@ -127,13 +142,35 @@ export default async function DashboardPage() {
       getTutorSalary(session.userId, currentMonthInColombo()),
       getTutorIncomeTrend(session.userId, 6, currentMonthInColombo()),
     ]);
+    const firstName = session.name.trim().split(/\s+/)[0];
+    const greeting = greetingForHour(colomboNow().getHours());
 
     return (
       <main className="min-h-full flex-1 bg-gray-50">
         <div className="mx-auto flex max-w-2xl flex-col gap-6 pb-10">
-          {header}
+          <header className="relative overflow-hidden bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-700 px-4 pb-9 pt-6 text-white sm:px-6">
+            <div className="pointer-events-none absolute -right-12 -top-16 h-48 w-48 rounded-full bg-white/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-20 -left-10 h-44 w-44 rounded-full bg-black/10 blur-3xl" />
+            <div className="relative flex items-start justify-between">
+              <div>
+                <p className="text-sm font-medium text-indigo-100">
+                  {greeting}, {firstName}
+                </p>
+                <h1 className="mt-1 text-2xl font-bold tracking-tight">{session.instituteName}</h1>
+              </div>
+              <form action={logout}>
+                <button
+                  type="submit"
+                  aria-label="Log out"
+                  className="rounded-full p-2.5 text-indigo-100 transition hover:bg-white/10 hover:text-white"
+                >
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </form>
+            </div>
+          </header>
 
-          <section className="px-4 sm:px-6">
+          <section className="-mt-6 px-4 sm:px-6">
             <IncomeTrendChart data={incomeTrend.map((d) => ({ month: d.month, value: d.netTotal }))} />
           </section>
 
@@ -145,34 +182,39 @@ export default async function DashboardPage() {
           {mySalary && (
             <section className="px-4 sm:px-6">
               <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-400">My salary</h2>
-              <Link href={`/salaries/${session.userId}`}>
-                <Card className="flex items-center justify-between gap-4 p-4 transition hover:border-indigo-200 hover:shadow-md">
-                  <div className="flex items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-indigo-50 text-indigo-600">
-                      <Wallet className="h-5 w-5" />
-                    </span>
-                    <div>
-                      <p className="font-medium text-gray-900">LKR {mySalary.netTotal.toFixed(2)}</p>
-                      <p className="text-sm text-gray-500">
-                        {new Date(`${currentMonthInColombo()}T00:00:00`).toLocaleDateString("en-US", {
-                          month: "long",
-                          year: "numeric",
-                          timeZone: "UTC",
-                        })}
-                      </p>
+              <Link href={`/salaries/${session.userId}`} className="block">
+                <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-gray-900 via-gray-900 to-indigo-950 p-5 text-white shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl">
+                  <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-indigo-500/25 blur-3xl" />
+                  <div className="relative flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white/10 text-indigo-200">
+                        <Wallet className="h-5 w-5" />
+                      </span>
+                      <div>
+                        <p className="text-xs font-medium uppercase tracking-wide text-gray-400">
+                          {new Date(`${currentMonthInColombo()}T00:00:00`).toLocaleDateString("en-US", {
+                            month: "long",
+                            year: "numeric",
+                            timeZone: "UTC",
+                          })}
+                        </p>
+                        <p className="mt-0.5 text-2xl font-bold tracking-tight">
+                          LKR {mySalary.netTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 flex-col items-end gap-2">
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium ${
+                          mySalary.status === "paid" ? "bg-emerald-400/20 text-emerald-300" : "bg-white/10 text-gray-300"
+                        }`}
+                      >
+                        {mySalary.status === "paid" ? "Paid" : "Unpaid"}
+                      </span>
+                      <ChevronRight className="h-4 w-4 text-gray-500" />
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${
-                        mySalary.status === "paid" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-600"
-                      }`}
-                    >
-                      {mySalary.status === "paid" ? "Paid" : "Unpaid"}
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-gray-300" />
-                  </div>
-                </Card>
+                </div>
               </Link>
             </section>
           )}
@@ -182,43 +224,53 @@ export default async function DashboardPage() {
             {myClasses.length === 0 ? (
               <EmptyState icon={BookOpen} message="You're not assigned to any classes yet." />
             ) : (
-              <Card className="divide-y divide-gray-100">
-                {myClasses.map((cls) => (
-                  <Link
-                    key={cls.id}
-                    href={`/attendance/${cls.id}`}
-                    className="flex items-center justify-between gap-4 p-4 transition hover:bg-gray-50"
-                  >
-                    <div>
-                      <p className="font-medium text-gray-900">
-                        {cls.subject}
-                        {cls.groupName && ` (${cls.groupName})`}
-                      </p>
-                      <p className="text-sm text-gray-500">
-                        {formatGrade(cls.grade)} · {formatMedium(cls.medium)}
-                      </p>
-                      <p className="text-sm text-gray-400">
-                        {cls.scheduleDays.join(", ") || "no schedule set"}
-                        {cls.scheduleStartTime ? ` · ${formatTime(cls.scheduleStartTime)}` : ""}
-                      </p>
-                      <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
-                        LKR {cls.collectedThisMonth.toLocaleString()} collected this month
-                      </span>
-                    </div>
-                    <div className="flex shrink-0 flex-col items-end gap-1">
-                      <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
-                        <Users className="h-3.5 w-3.5" />
-                        {cls.studentCount}
-                      </span>
-                      {cls.newEnrollmentsThisMonth > 0 && (
-                        <span className="text-xs font-medium text-indigo-600">
-                          +{cls.newEnrollmentsThisMonth} new
+              <div className="flex flex-col gap-2.5">
+                {myClasses.map((cls) => {
+                  const color = subjectColor(cls.subject);
+                  return (
+                    <Link
+                      key={cls.id}
+                      href={`/attendance/${cls.id}`}
+                      className={`flex items-center justify-between gap-4 rounded-2xl border border-l-4 border-gray-100 bg-white p-4 shadow-sm transition hover:shadow-md ${color.border}`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <span
+                          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-xs font-bold ${color.bg} ${color.text}`}
+                        >
+                          {cls.subject.slice(0, 2).toUpperCase()}
                         </span>
-                      )}
-                    </div>
-                  </Link>
-                ))}
-              </Card>
+                        <div>
+                          <p className="font-semibold text-gray-900">
+                            {cls.subject}
+                            {cls.groupName && ` (${cls.groupName})`}
+                          </p>
+                          <p className="text-sm text-gray-500">
+                            {formatGrade(cls.grade)} · {formatMedium(cls.medium)}
+                          </p>
+                          <p className="text-sm text-gray-400">
+                            {cls.scheduleDays.join(", ") || "no schedule set"}
+                            {cls.scheduleStartTime ? ` · ${formatTime(cls.scheduleStartTime)}` : ""}
+                          </p>
+                          <span className="mt-1 inline-block rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-700">
+                            LKR {cls.collectedThisMonth.toLocaleString()} collected this month
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        <span className="flex items-center gap-1 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-600">
+                          <Users className="h-3.5 w-3.5" />
+                          {cls.studentCount}
+                        </span>
+                        {cls.newEnrollmentsThisMonth > 0 && (
+                          <span className="text-xs font-medium text-indigo-600">
+                            +{cls.newEnrollmentsThisMonth} new
+                          </span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
             )}
           </section>
         </div>

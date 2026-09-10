@@ -58,8 +58,10 @@ export function IncomeTrendChart({ data, title = "Income trend" }: { data: Trend
     setHoverIndex(Math.max(0, Math.min(points.length - 1, index)));
   }
 
+  const gradientId = `income-trend-fill-${title.replace(/\s+/g, "-").toLowerCase()}`;
+
   return (
-    <Card className="p-4">
+    <Card className="overflow-hidden p-4">
       <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{title}</p>
       <div className="relative mt-2">
         <svg
@@ -68,6 +70,13 @@ export function IncomeTrendChart({ data, title = "Income trend" }: { data: Trend
           role="img"
           aria-label={`${title} from ${monthLabelFull(data[0].month)} to ${monthLabelFull(data[data.length - 1].month)}, ranging from LKR ${min.toLocaleString()} to LKR ${max.toLocaleString()}`}
         >
+          <defs>
+            <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#6366f1" stopOpacity={0.32} />
+              <stop offset="100%" stopColor="#6366f1" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+
           <line
             x1={PAD_X}
             y1={HEIGHT - PAD_BOTTOM}
@@ -77,8 +86,15 @@ export function IncomeTrendChart({ data, title = "Income trend" }: { data: Trend
             strokeWidth={1}
           />
 
-          <path d={areaPath} fill="#4f46e5" fillOpacity={0.1} stroke="none" />
-          <path d={linePath} fill="none" stroke="#4f46e5" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+          <path d={areaPath} fill={`url(#${gradientId})`} stroke="none" />
+          <path
+            d={linePath}
+            fill="none"
+            stroke="#4f46e5"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
 
           {points.map((p, i) => (
             <text

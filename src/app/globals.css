@@ -20,5 +20,15 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  /* Geist is already loaded (layout.tsx) and wired up above as
+     --font-sans, but nothing was actually applying it — this fell back
+     to plain Arial on every device. */
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
 }
