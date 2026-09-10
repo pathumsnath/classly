@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/session/session_info.dart';
 import '../../core/session/session_provider.dart';
 import '../../shared/widgets/today_classes_list.dart';
@@ -11,7 +12,10 @@ class _NavTile {
   final IconData icon;
   final Color bg;
   final Color fg;
-  const _NavTile(this.label, this.icon, this.bg, this.fg);
+  // Null while that destination screen doesn't exist yet — the tile
+  // falls back to a "coming in a future build" snackbar.
+  final String? route;
+  const _NavTile(this.label, this.icon, this.bg, this.fg, {this.route});
 }
 
 // Mirrors src/lib/nav-items.ts's NAV_ITEMS / OWNER_NAV_ITEMS — same
@@ -26,7 +30,13 @@ const _navItems = [
     Color(0xFFF5F3FF),
     Color(0xFF7C3AED),
   ),
-  _NavTile('Classes', Icons.menu_book, Color(0xFFFFF7ED), Color(0xFFEA580C)),
+  _NavTile(
+    'Classes',
+    Icons.menu_book,
+    Color(0xFFFFF7ED),
+    Color(0xFFEA580C),
+    route: '/classes',
+  ),
   _NavTile('Fees', Icons.receipt_long, Color(0xFFECFDF5), Color(0xFF059669)),
 ];
 
@@ -191,6 +201,10 @@ class _NavTileButton extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(14),
       onTap: () {
+        if (tile.route != null) {
+          context.push(tile.route!);
+          return;
+        }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('${tile.label} is coming in a future build.')),
         );

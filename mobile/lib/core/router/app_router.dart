@@ -4,6 +4,8 @@ import 'package:go_router/go_router.dart';
 import '../supabase/client.dart';
 import '../../features/attendance/attendance_screen.dart';
 import '../../features/auth/login_screen.dart';
+import '../../features/classes/class_detail_screen.dart';
+import '../../features/classes/classes_list_screen.dart';
 import '../../features/home/home_screen.dart';
 
 /// Converts the Supabase auth-state Stream into a Listenable so go_router
@@ -48,6 +50,15 @@ final appRouter = GoRouter(
           subtitle: extra?['subtitle'],
         );
       },
+    ),
+    GoRoute(
+      path: '/classes',
+      builder: (context, state) => const ClassesListScreen(),
+    ),
+    GoRoute(
+      path: '/classes/:classId',
+      builder: (context, state) =>
+          ClassDetailScreen(classId: state.pathParameters['classId']!),
     ),
   ],
 );

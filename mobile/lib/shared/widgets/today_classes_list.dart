@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../../core/labels/class_labels.dart';
 import '../models/today_class.dart';
 
 const _bucketColors = {
@@ -67,7 +68,7 @@ class TodayClassCard extends StatelessWidget {
         ? '${cls.subject} (${cls.groupName})'
         : cls.subject;
     final timeText = cls.scheduleStartTime != null
-        ? '${_formatTime(cls.scheduleStartTime!)}${cls.scheduleEndTime != null ? '–${_formatTime(cls.scheduleEndTime!)}' : ''}'
+        ? '${formatTime12h(cls.scheduleStartTime!)}${cls.scheduleEndTime != null ? '–${formatTime12h(cls.scheduleEndTime!)}' : ''}'
         : null;
 
     return Container(
@@ -136,13 +137,4 @@ class TodayClassCard extends StatelessWidget {
       ),
     );
   }
-}
-
-String _formatTime(String hhmmss) {
-  final parts = hhmmss.split(':');
-  final h = int.parse(parts[0]);
-  final m = int.parse(parts[1]);
-  final period = h >= 12 ? 'PM' : 'AM';
-  final h12 = h % 12 == 0 ? 12 : h % 12;
-  return '$h12:${m.toString().padLeft(2, '0')} $period';
 }
