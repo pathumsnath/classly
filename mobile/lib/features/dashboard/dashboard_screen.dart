@@ -23,7 +23,13 @@ class _NavTile {
 // recognizable to someone who already knows the web app.
 const _navItems = [
   _NavTile('Tutors', Icons.school, Color(0xFFEEF2FF), Color(0xFF4F46E5)),
-  _NavTile('Students', Icons.people, Color(0xFFF0F9FF), Color(0xFF0284C7)),
+  _NavTile(
+    'Students',
+    Icons.people,
+    Color(0xFFF0F9FF),
+    Color(0xFF0284C7),
+    route: '/students',
+  ),
   _NavTile(
     'Subjects',
     Icons.local_library,
