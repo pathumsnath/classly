@@ -6,6 +6,9 @@ import '../../features/attendance/attendance_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/classes/class_detail_screen.dart';
 import '../../features/classes/classes_list_screen.dart';
+import '../../features/fees/fees_list_screen.dart';
+import '../../features/fees/record_payment_screen.dart';
+import '../../features/fees/student_fees_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/students_list_screen.dart';
@@ -92,6 +95,17 @@ final appRouter = GoRouter(
     GoRoute(
       path: '/subjects',
       builder: (context, state) => const SubjectsScreen(),
+    ),
+    GoRoute(path: '/fees', builder: (context, state) => const FeesListScreen()),
+    GoRoute(
+      path: '/fees/:studentId',
+      builder: (context, state) =>
+          StudentFeesScreen(studentId: state.pathParameters['studentId']!),
+    ),
+    GoRoute(
+      path: '/fees/:studentId/record',
+      builder: (context, state) =>
+          RecordPaymentScreen(studentId: state.pathParameters['studentId']!),
     ),
   ],
 );

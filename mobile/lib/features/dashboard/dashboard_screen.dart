@@ -50,7 +50,13 @@ const _navItems = [
     Color(0xFFEA580C),
     route: '/classes',
   ),
-  _NavTile('Fees', Icons.receipt_long, Color(0xFFECFDF5), Color(0xFF059669)),
+  _NavTile(
+    'Fees',
+    Icons.receipt_long,
+    Color(0xFFECFDF5),
+    Color(0xFF059669),
+    route: '/fees',
+  ),
 ];
 
 const _ownerNavItems = [
