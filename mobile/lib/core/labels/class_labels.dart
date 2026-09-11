@@ -60,3 +60,50 @@ String formatTime12h(String hhmmss) {
   final h12 = h % 12 == 0 ? 12 : h % 12;
   return '$h12:${m.toString().padLeft(2, '0')} $period';
 }
+
+const _monthAbbrev = [
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+];
+
+const _monthNames = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December',
+];
+
+/// "2026-09-11" -> "Sep 11" — a session-cycle's dates (or a monthly
+/// grid's columns) can straddle a month boundary, so a bare day number
+/// would be ambiguous about which month it's actually in.
+String formatDayLabel(String date) {
+  final parts = date.split('-');
+  final month = int.parse(parts[1]);
+  final day = int.parse(parts[2]);
+  return '${_monthAbbrev[month - 1]} $day';
+}
+
+/// "2026-09-01" -> "September 2026".
+String formatMonthLabel(String month) {
+  final parts = month.split('-');
+  final monthIndex = int.parse(parts[1]);
+  return '${_monthNames[monthIndex - 1]} ${parts[0]}';
+}

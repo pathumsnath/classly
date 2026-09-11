@@ -9,6 +9,7 @@ import '../../features/classes/classes_list_screen.dart';
 import '../../features/fees/fees_list_screen.dart';
 import '../../features/fees/record_payment_screen.dart';
 import '../../features/fees/student_fees_screen.dart';
+import '../../features/attendance/monthly_attendance_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/students_list_screen.dart';
@@ -59,6 +60,11 @@ final appRouter = GoRouter(
           subtitle: extra?['subtitle'],
         );
       },
+    ),
+    GoRoute(
+      path: '/attendance/:classId/history',
+      builder: (context, state) =>
+          MonthlyAttendanceScreen(classId: state.pathParameters['classId']!),
     ),
     GoRoute(
       path: '/classes',

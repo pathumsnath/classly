@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../core/labels/class_labels.dart';
 import '../../core/time/colombo_time.dart';
 import '../../shared/models/attendance_student.dart';
@@ -172,6 +173,14 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
               ),
           ],
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.calendar_month, color: Colors.grey),
+            tooltip: 'Monthly view',
+            onPressed: () =>
+                context.push('/attendance/${widget.classId}/history'),
+          ),
+        ],
       ),
       body: SafeArea(
         child: rosterAsync.when(
