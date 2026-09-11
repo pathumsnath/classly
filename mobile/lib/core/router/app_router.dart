@@ -11,8 +11,10 @@ import '../../features/fees/record_payment_screen.dart';
 import '../../features/fees/student_fees_screen.dart';
 import '../../features/attendance/monthly_attendance_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/money/money_screen.dart';
 import '../../features/salaries/salaries_list_screen.dart';
 import '../../features/salaries/tutor_salary_screen.dart';
+import '../../features/staff/invite_staff_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/students_list_screen.dart';
 import '../../features/subjects/subjects_screen.dart';
@@ -125,6 +127,11 @@ final appRouter = GoRouter(
         tutorId: state.pathParameters['tutorId']!,
         initialMonth: state.uri.queryParameters['month'],
       ),
+    ),
+    GoRoute(path: '/money', builder: (context, state) => const MoneyScreen()),
+    GoRoute(
+      path: '/staff/invite',
+      builder: (context, state) => const InviteStaffScreen(),
     ),
   ],
 );
