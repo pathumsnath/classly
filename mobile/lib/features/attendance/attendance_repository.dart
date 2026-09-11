@@ -188,14 +188,12 @@ class AttendanceRepository {
   }
 
   /// Ported from src/lib/attendance/queries.ts's getClassAttendanceForMonth.
-  /// Cycle-billed classes return isCycleBilled: true with an empty grid —
-  /// re-deriving a session-cycle's own dates (and paging backward through
-  /// past cycles) isn't supported by this view yet.
   Future<ClassMonthlyAttendance?> fetchMonthlyAttendance(
     SessionInfo session,
     String classId,
-    String month,
-  ) async {
+    String month, {
+    int cycleOffset = 0,
+  }) async {
     final cls = await supabase
         .from('classes')
         .select(
@@ -213,49 +211,78 @@ class AttendanceRepository {
         .maybeSingle();
     final subject = subjectRow?['name'] as String? ?? 'Unknown';
     final groupName = cls['group_name'] as String?;
-
-    if (cls['billing_cycle_sessions'] != null) {
-      return ClassMonthlyAttendance(
-        classId: classId,
-        subject: subject,
-        groupName: groupName,
-        month: month,
-        sessionDates: const [],
-        students: const [],
-        collectedThisMonth: 0,
-        isCycleBilled: true,
-      );
-    }
-
     final scheduleDays = (cls['schedule_days'] as List).cast<String>();
-    final parts = month.split('-');
-    final year = int.parse(parts[0]);
-    final monthNum = int.parse(parts[1]);
-    final daysInMonth = DateTime.utc(year, monthNum + 1, 0).day;
-    final allDatesInMonth = <String>[];
-    for (var day = 1; day <= daysInMonth; day++) {
-      final d = DateTime.utc(year, monthNum, day);
-      if (scheduleDays.contains(weekdayName(d))) {
-        allDatesInMonth.add(
-          '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+    final billingCycleSessions = cls['billing_cycle_sessions'] as int?;
+    final classCycleStartedAt = cls['cycle_started_at'] as String?;
+
+    List<String> sessionDates;
+    BillingCycleProgress? cycleProgress;
+
+    if (billingCycleSessions != null && classCycleStartedAt != null) {
+      var cycleStart = classCycleStartedAt;
+      for (var i = 0; i < cycleOffset; i++) {
+        cycleStart = await _stepCycleStartBackward(
+          classId,
+          scheduleDays,
+          cycleStart,
+          billingCycleSessions,
         );
       }
-    }
+      sessionDates = await _walkCycleSessionDates(
+        classId,
+        scheduleDays,
+        cycleStart,
+        billingCycleSessions,
+      );
 
-    final cancellations = allDatesInMonth.isEmpty
-        ? <Map<String, dynamic>>[]
-        : (await supabase
-                  .from('class_cancellations')
-                  .select('date')
-                  .eq('class_id', classId)
-                  .inFilter('date', allDatesInMonth))
-              .cast<Map<String, dynamic>>();
-    final cancelledDates = cancellations
-        .map((c) => c['date'] as String)
-        .toSet();
-    final sessionDates = allDatesInMonth
-        .where((d) => !cancelledDates.contains(d))
-        .toList();
+      // Bounded to this specific cycle's own dates (not "everything since
+      // cycleStart") so a past, fully-closed cycle doesn't pick up a
+      // later cycle's sessions too.
+      final sessionsSoFarRows = sessionDates.isEmpty
+          ? const <Map<String, dynamic>>[]
+          : (await supabase
+                    .from('attendance')
+                    .select('date')
+                    .eq('class_id', classId)
+                    .inFilter('date', sessionDates))
+                .cast<Map<String, dynamic>>();
+      final distinctDates = sessionsSoFarRows
+          .map((s) => s['date'] as String)
+          .toSet();
+      cycleProgress = BillingCycleProgress(
+        sessionsRequired: billingCycleSessions,
+        sessionsSoFar: distinctDates.length,
+      );
+    } else {
+      final parts = month.split('-');
+      final year = int.parse(parts[0]);
+      final monthNum = int.parse(parts[1]);
+      final daysInMonth = DateTime.utc(year, monthNum + 1, 0).day;
+      final allDatesInMonth = <String>[];
+      for (var day = 1; day <= daysInMonth; day++) {
+        final d = DateTime.utc(year, monthNum, day);
+        if (scheduleDays.contains(weekdayName(d))) {
+          allDatesInMonth.add(
+            '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}',
+          );
+        }
+      }
+
+      final cancellations = allDatesInMonth.isEmpty
+          ? <Map<String, dynamic>>[]
+          : (await supabase
+                    .from('class_cancellations')
+                    .select('date')
+                    .eq('class_id', classId)
+                    .inFilter('date', allDatesInMonth))
+                .cast<Map<String, dynamic>>();
+      final cancelledDates = cancellations
+          .map((c) => c['date'] as String)
+          .toSet();
+      sessionDates = allDatesInMonth
+          .where((d) => !cancelledDates.contains(d))
+          .toList();
+    }
 
     final enrollments = await supabase
         .from('enrollments')
@@ -272,7 +299,8 @@ class AttendanceRepository {
         sessionDates: sessionDates,
         students: const [],
         collectedThisMonth: 0,
-        isCycleBilled: false,
+        cycleProgress: cycleProgress,
+        cycleOffset: cycleOffset,
       );
     }
 
@@ -331,9 +359,13 @@ class AttendanceRepository {
       (paymentsByStudent[p['student_id'] as String] ??= []).add(p);
     }
 
+    // Not meaningful for a session-cycle class's in-progress cycle — its
+    // fee doesn't exist until the cycle closes.
     num collectedThisMonth = 0;
-    for (final p in payments) {
-      if (p['month'] == month) collectedThisMonth += p['amount_paid'] as num;
+    if (cycleProgress == null) {
+      for (final p in payments) {
+        if (p['month'] == month) collectedThisMonth += p['amount_paid'] as num;
+      }
     }
 
     final currentMonth = currentMonthInColombo();
@@ -350,8 +382,8 @@ class AttendanceRepository {
           status: p['status'] as String,
           paymentMonth: p['month'] as String,
           paymentCycleStartedAt: p['cycle_started_at'] as String?,
-          billingCycleSessions: null,
-          classCycleStartedAt: null,
+          billingCycleSessions: billingCycleSessions,
+          classCycleStartedAt: classCycleStartedAt,
           currentMonth: currentMonth,
         ),
       );
@@ -383,7 +415,69 @@ class AttendanceRepository {
       sessionDates: sessionDates,
       students: rows,
       collectedThisMonth: collectedThisMonth,
-      isCycleBilled: false,
+      cycleProgress: cycleProgress,
+      cycleOffset: cycleOffset,
     );
   }
+
+  /// Ported from src/lib/attendance/queries.ts's walkCycleSessionDates —
+  /// walks forward day-by-day from `from`, collecting scheduled (and not
+  /// cancelled) session dates until there are `count` of them. Capped at
+  /// 1000 iterations as a runaway guard.
+  Future<List<String>> _walkCycleSessionDates(
+    String classId,
+    List<String> scheduleDays,
+    String from,
+    int count,
+  ) async {
+    final dates = <String>[];
+    var d = DateTime.parse('${from}T00:00:00Z');
+    for (var i = 0; dates.length < count && i < 1000; i++) {
+      final dateStr = _isoDate(d);
+      if (scheduleDays.contains(weekdayName(d))) {
+        final cancellation = await supabase
+            .from('class_cancellations')
+            .select('id')
+            .eq('class_id', classId)
+            .eq('date', dateStr)
+            .maybeSingle();
+        if (cancellation == null) dates.add(dateStr);
+      }
+      d = d.add(const Duration(days: 1));
+    }
+    return dates;
+  }
+
+  /// Ported from src/lib/attendance/queries.ts's stepCycleStartBackward —
+  /// the reverse of _walkCycleSessionDates, used to page backward through
+  /// a session-cycle class's closed cycles since their boundaries aren't
+  /// stored anywhere.
+  Future<String> _stepCycleStartBackward(
+    String classId,
+    List<String> scheduleDays,
+    String from,
+    int count,
+  ) async {
+    final dates = <String>[];
+    var d = DateTime.parse(
+      '${from}T00:00:00Z',
+    ).subtract(const Duration(days: 1));
+    for (var i = 0; dates.length < count && i < 1000; i++) {
+      final dateStr = _isoDate(d);
+      if (scheduleDays.contains(weekdayName(d))) {
+        final cancellation = await supabase
+            .from('class_cancellations')
+            .select('id')
+            .eq('class_id', classId)
+            .eq('date', dateStr)
+            .maybeSingle();
+        if (cancellation == null) dates.add(dateStr);
+      }
+      d = d.subtract(const Duration(days: 1));
+    }
+    return dates.isEmpty ? from : dates.last;
+  }
+
+  String _isoDate(DateTime d) =>
+      '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 }

@@ -40,6 +40,7 @@ class MonthlyAttendanceScreen extends ConsumerStatefulWidget {
 class _MonthlyAttendanceScreenState
     extends ConsumerState<MonthlyAttendanceScreen> {
   late String _month = currentMonthInColombo();
+  int _cycleOffset = 0;
 
   void _shiftMonth(int delta) {
     final parts = _month.split('-');
@@ -59,10 +60,18 @@ class _MonthlyAttendanceScreenState
     );
   }
 
+  void _shiftCycle(int delta) {
+    setState(() => _cycleOffset = (_cycleOffset + delta).clamp(0, 1 << 30));
+  }
+
   @override
   Widget build(BuildContext context) {
     final dataAsync = ref.watch(
-      classMonthlyAttendanceProvider((classId: widget.classId, month: _month)),
+      classMonthlyAttendanceProvider((
+        classId: widget.classId,
+        month: _month,
+        cycleOffset: _cycleOffset,
+      )),
     );
 
     return Scaffold(
@@ -103,72 +112,71 @@ class _MonthlyAttendanceScreenState
                 ),
               );
             }
-            if (data.isCycleBilled) {
-              return const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: Text(
-                    "Monthly view isn't available yet for this class's billing cycle.",
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ),
-              );
-            }
-
             return Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 4),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: const Color(0xFFF3F4F6)),
-                        ),
-                        child: Row(
+                  child: data.cycleProgress != null
+                      ? _CycleHeader(
+                          cycleProgress: data.cycleProgress!,
+                          cycleOffset: _cycleOffset,
+                          sessionDates: data.sessionDates,
+                          onPrevious: () => _shiftCycle(1),
+                          onNext: () => _shiftCycle(-1),
+                        )
+                      : Row(
                           children: [
-                            IconButton(
-                              icon: const Icon(Icons.chevron_left),
-                              onPressed: () => _shiftMonth(-1),
-                            ),
-                            Text(
-                              formatMonthLabel(_month),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w600,
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  color: const Color(0xFFF3F4F6),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  IconButton(
+                                    icon: const Icon(Icons.chevron_left),
+                                    onPressed: () => _shiftMonth(-1),
+                                  ),
+                                  Text(
+                                    formatMonthLabel(_month),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(Icons.chevron_right),
+                                    onPressed: () => _shiftMonth(1),
+                                  ),
+                                ],
                               ),
                             ),
-                            IconButton(
-                              icon: const Icon(Icons.chevron_right),
-                              onPressed: () => _shiftMonth(1),
+                            const Spacer(),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFDCFCE7),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'LKR ${formatAmount(data.collectedThisMonth)} collected',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF15803D),
+                                ),
+                              ),
                             ),
                           ],
                         ),
-                      ),
-                      const Spacer(),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFDCFCE7),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          'LKR ${formatAmount(data.collectedThisMonth)} collected',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF15803D),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
                 const SizedBox(height: 12),
                 Expanded(
@@ -219,6 +227,101 @@ class _MonthlyAttendanceScreenState
   }
 }
 
+/// Ported from src/app/attendance/[classId]/cycle-header.tsx — a
+/// session-cycle class's history isn't stored anywhere as discrete
+/// cycles, so paging "back" re-derives the previous cycle's dates from
+/// the schedule each time (see AttendanceRepository._stepCycleStartBackward).
+class _CycleHeader extends StatelessWidget {
+  final BillingCycleProgress cycleProgress;
+  final int cycleOffset;
+  final List<String> sessionDates;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  const _CycleHeader({
+    required this.cycleProgress,
+    required this.cycleOffset,
+    required this.sessionDates,
+    required this.onPrevious,
+    required this.onNext,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isCurrent = cycleOffset == 0;
+    final isClosed =
+        cycleProgress.sessionsSoFar >= cycleProgress.sessionsRequired;
+    final label = isCurrent
+        ? 'Current billing cycle'
+        : sessionDates.isNotEmpty
+        ? '${formatDayLabel(sessionDates.first)} – ${formatDayLabel(sessionDates.last)}'
+        : 'Billing cycle';
+    final sessionNumber = (cycleProgress.sessionsSoFar + 1).clamp(
+      0,
+      cycleProgress.sessionsRequired,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFFF3F4F6)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left),
+                onPressed: onPrevious,
+              ),
+              Text(label, style: const TextStyle(fontWeight: FontWeight.w600)),
+              IconButton(
+                icon: Icon(
+                  Icons.chevron_right,
+                  color: isCurrent ? const Color(0xFFE5E7EB) : null,
+                ),
+                onPressed: isCurrent ? null : onNext,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEEF2FF),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Session $sessionNumber of ${cycleProgress.sessionsRequired}',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: Color(0xFF4338CA),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                isClosed
+                    ? 'This cycle is complete.'
+                    : 'Fee for this cycle was billed at the start.',
+                style: const TextStyle(color: Colors.grey, fontSize: 13),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _MonthlyGrid extends StatelessWidget {
   final List<String> sessionDates;
   final List<MonthlyAttendanceStudentRow> students;
@@ -229,6 +332,8 @@ class _MonthlyGrid extends StatelessWidget {
     return DataTable(
       headingRowColor: WidgetStateProperty.all(Colors.white),
       dataRowColor: WidgetStateProperty.all(Colors.white),
+      dataRowMinHeight: 84,
+      dataRowMaxHeight: 84,
       columns: [
         const DataColumn(
           label: Text(

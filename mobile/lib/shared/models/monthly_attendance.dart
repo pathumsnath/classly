@@ -23,11 +23,17 @@ class MonthlyAttendanceStudentRow {
   });
 }
 
-/// Mirrors src/lib/attendance/queries.ts's ClassMonthlyAttendance —
-/// cycle-billed classes aren't supported by this view yet (see
-/// AttendanceRepository.fetchMonthlyAttendance), flagged via
-/// [isCycleBilled] so the screen can show a plain message instead of a
-/// wrong or empty grid.
+/// Mirrors src/lib/attendance/queries.ts's BillingCycleProgress.
+class BillingCycleProgress {
+  final int sessionsRequired;
+  final int sessionsSoFar;
+  const BillingCycleProgress({
+    required this.sessionsRequired,
+    required this.sessionsSoFar,
+  });
+}
+
+/// Mirrors src/lib/attendance/queries.ts's ClassMonthlyAttendance.
 class ClassMonthlyAttendance {
   final String classId;
   final String subject;
@@ -35,8 +41,17 @@ class ClassMonthlyAttendance {
   final String month;
   final List<String> sessionDates;
   final List<MonthlyAttendanceStudentRow> students;
+  // Not meaningful (always 0) for a session-cycle class's in-progress
+  // cycle — its fee doesn't exist until the cycle closes.
   final num collectedThisMonth;
-  final bool isCycleBilled;
+  // Non-null only for a class on session-cycle billing — the calendar
+  // grid doesn't apply to it (a cycle can straddle a month boundary), so
+  // the screen shows cycle paging instead of month navigation.
+  final BillingCycleProgress? cycleProgress;
+  // How many cycles back from the current (open) one is being viewed —
+  // 0 is current, 1 is the one before it, etc. Only meaningful alongside
+  // cycleProgress.
+  final int cycleOffset;
 
   const ClassMonthlyAttendance({
     required this.classId,
@@ -46,6 +61,7 @@ class ClassMonthlyAttendance {
     required this.sessionDates,
     required this.students,
     required this.collectedThisMonth,
-    required this.isCycleBilled,
+    required this.cycleProgress,
+    required this.cycleOffset,
   });
 }

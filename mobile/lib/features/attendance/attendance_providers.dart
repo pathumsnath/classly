@@ -19,13 +19,18 @@ final classRosterProvider = FutureProvider.autoDispose
     });
 
 final classMonthlyAttendanceProvider = FutureProvider.autoDispose
-    .family<ClassMonthlyAttendance?, ({String classId, String month})>((
-      ref,
-      args,
-    ) async {
+    .family<
+      ClassMonthlyAttendance?,
+      ({String classId, String month, int cycleOffset})
+    >((ref, args) async {
       final session = await ref.watch(sessionInfoProvider.future);
       if (session == null) return null;
       return ref
           .read(attendanceRepositoryProvider)
-          .fetchMonthlyAttendance(session, args.classId, args.month);
+          .fetchMonthlyAttendance(
+            session,
+            args.classId,
+            args.month,
+            cycleOffset: args.cycleOffset,
+          );
     });
