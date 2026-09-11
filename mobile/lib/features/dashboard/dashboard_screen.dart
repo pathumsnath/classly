@@ -41,6 +41,7 @@ const _navItems = [
     Icons.local_library,
     Color(0xFFF5F3FF),
     Color(0xFF7C3AED),
+    route: '/subjects',
   ),
   _NavTile(
     'Classes',

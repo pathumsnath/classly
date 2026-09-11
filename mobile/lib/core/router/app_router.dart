@@ -9,6 +9,7 @@ import '../../features/classes/classes_list_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/students_list_screen.dart';
+import '../../features/subjects/subjects_screen.dart';
 import '../../features/tutors/tutor_detail_screen.dart';
 import '../../features/tutors/tutor_edit_screen.dart';
 import '../../features/tutors/tutors_list_screen.dart';
@@ -87,6 +88,10 @@ final appRouter = GoRouter(
       path: '/tutors/:tutorId/edit',
       builder: (context, state) =>
           TutorEditScreen(tutorId: state.pathParameters['tutorId']!),
+    ),
+    GoRoute(
+      path: '/subjects',
+      builder: (context, state) => const SubjectsScreen(),
     ),
   ],
 );
