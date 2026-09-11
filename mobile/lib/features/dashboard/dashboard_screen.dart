@@ -65,6 +65,7 @@ const _ownerNavItems = [
     Icons.account_balance_wallet,
     Color(0xFFF0FDFA),
     Color(0xFF0D9488),
+    route: '/salaries',
   ),
   _NavTile('Money', Icons.trending_up, Color(0xFFF0FDF4), Color(0xFF16A34A)),
   _NavTile('Add staff', Icons.person_add, Color(0xFFFFF1F2), Color(0xFFE11D48)),

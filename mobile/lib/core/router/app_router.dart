@@ -11,6 +11,8 @@ import '../../features/fees/record_payment_screen.dart';
 import '../../features/fees/student_fees_screen.dart';
 import '../../features/attendance/monthly_attendance_screen.dart';
 import '../../features/home/home_screen.dart';
+import '../../features/salaries/salaries_list_screen.dart';
+import '../../features/salaries/tutor_salary_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/students_list_screen.dart';
 import '../../features/subjects/subjects_screen.dart';
@@ -112,6 +114,17 @@ final appRouter = GoRouter(
       path: '/fees/:studentId/record',
       builder: (context, state) =>
           RecordPaymentScreen(studentId: state.pathParameters['studentId']!),
+    ),
+    GoRoute(
+      path: '/salaries',
+      builder: (context, state) => const SalariesListScreen(),
+    ),
+    GoRoute(
+      path: '/salaries/:tutorId',
+      builder: (context, state) => TutorSalaryScreen(
+        tutorId: state.pathParameters['tutorId']!,
+        initialMonth: state.uri.queryParameters['month'],
+      ),
     ),
   ],
 );
