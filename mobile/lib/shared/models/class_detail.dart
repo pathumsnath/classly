@@ -2,6 +2,7 @@
 class ClassDetail {
   final String id;
   final String subject;
+  final String subjectId;
   final String? groupName;
   final String? grade;
   final String? medium;
@@ -12,12 +13,16 @@ class ClassDetail {
   final String? scheduleEndTime;
   final num feeAmount;
   final String? room;
+  final int? maxStudents;
   final String tutorPaymentModel;
   final num tutorPaymentValue;
+  final int? billingCycleSessions;
+  final String? cycleStartedAt;
 
   const ClassDetail({
     required this.id,
     required this.subject,
+    required this.subjectId,
     required this.groupName,
     required this.grade,
     required this.medium,
@@ -28,8 +33,11 @@ class ClassDetail {
     required this.scheduleEndTime,
     required this.feeAmount,
     required this.room,
+    required this.maxStudents,
     required this.tutorPaymentModel,
     required this.tutorPaymentValue,
+    required this.billingCycleSessions,
+    required this.cycleStartedAt,
   });
 }
 

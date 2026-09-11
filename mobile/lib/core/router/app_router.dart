@@ -5,6 +5,7 @@ import '../supabase/client.dart';
 import '../../features/attendance/attendance_screen.dart';
 import '../../features/auth/login_screen.dart';
 import '../../features/classes/class_detail_screen.dart';
+import '../../features/classes/class_form_screen.dart';
 import '../../features/classes/classes_list_screen.dart';
 import '../../features/fees/fees_list_screen.dart';
 import '../../features/fees/record_payment_screen.dart';
@@ -75,9 +76,18 @@ final appRouter = GoRouter(
       builder: (context, state) => const ClassesListScreen(),
     ),
     GoRoute(
+      path: '/classes/create',
+      builder: (context, state) => const ClassFormScreen(),
+    ),
+    GoRoute(
       path: '/classes/:classId',
       builder: (context, state) =>
           ClassDetailScreen(classId: state.pathParameters['classId']!),
+    ),
+    GoRoute(
+      path: '/classes/:classId/edit',
+      builder: (context, state) =>
+          ClassFormScreen(classId: state.pathParameters['classId']!),
     ),
     GoRoute(
       path: '/students',

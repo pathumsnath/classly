@@ -37,6 +37,17 @@ class ClassDetailScreen extends ConsumerWidget {
           error: (_, _) =>
               const Text('Class', style: TextStyle(color: Colors.black)),
         ),
+        actions: [
+          if (detailAsync.value != null)
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Colors.grey),
+              onPressed: () async {
+                await context.push('/classes/$classId/edit');
+                ref.invalidate(classDetailProvider(classId));
+                ref.invalidate(classesListProvider);
+              },
+            ),
+        ],
       ),
       body: SafeArea(
         child: detailAsync.when(

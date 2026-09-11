@@ -31,6 +31,14 @@ class _ClassesListScreenState extends ConsumerState<ClassesListScreen> {
           style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
         ),
       ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: const Color(0xFF4F46E5),
+        onPressed: () async {
+          await context.push('/classes/create');
+          ref.invalidate(classesListProvider);
+        },
+        child: const Icon(Icons.add, color: Colors.white),
+      ),
       body: SafeArea(
         child: classesAsync.when(
           data: (classes) {
