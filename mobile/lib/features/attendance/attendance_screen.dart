@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../core/labels/class_labels.dart';
 import '../../core/time/colombo_time.dart';
 import '../../shared/models/attendance_student.dart';
 import '../today/today_providers.dart';
+import 'attendance_payment_sheet.dart';
 import 'attendance_providers.dart';
 
 const _statusColors = {
@@ -115,6 +117,31 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
     }
   }
 
+  Future<void> _openPaymentSheet(AttendanceStudent student) async {
+    await showAttendancePaymentSheet(
+      context,
+      ref,
+      classId: widget.classId,
+      date: _date,
+      student: student,
+    );
+    // The sheet invalidates classRosterProvider on a successful payment —
+    // pull the refreshed fee numbers into the local roster copy so the
+    // badge updates without losing in-progress attendance taps.
+    final refreshed = await ref.read(
+      classRosterProvider((classId: widget.classId, date: _date)).future,
+    );
+    if (!mounted || _roster == null) return;
+    final byId = {for (final s in refreshed) s.enrollmentId: s};
+    setState(() {
+      _roster = _roster!.map((s) {
+        final updated = byId[s.enrollmentId];
+        if (updated == null) return s;
+        return updated.copyWith(status: s.status);
+      }).toList();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final rosterAsync = ref.watch(
@@ -194,6 +221,7 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
                     itemBuilder: (context, index) => _StudentRow(
                       student: roster[index],
                       onTap: () => _toggle(index),
+                      onTapFeeBadge: () => _openPaymentSheet(roster[index]),
                     ),
                   ),
                 ),
@@ -242,7 +270,12 @@ class _AttendanceScreenState extends ConsumerState<AttendanceScreen> {
 class _StudentRow extends StatelessWidget {
   final AttendanceStudent student;
   final VoidCallback onTap;
-  const _StudentRow({required this.student, required this.onTap});
+  final VoidCallback onTapFeeBadge;
+  const _StudentRow({
+    required this.student,
+    required this.onTap,
+    required this.onTapFeeBadge,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -253,48 +286,110 @@ class _StudentRow extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: const Color(0xFFF3F4F6)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              student.name,
-              style: const TextStyle(fontWeight: FontWeight.w600),
-            ),
-          ),
-          InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: _statusBg[student.status],
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _statusColors[student.status]!.withValues(alpha: 0.3),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  student.name,
+                  style: const TextStyle(fontWeight: FontWeight.w600),
                 ),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _statusIcons[student.status],
-                    size: 16,
-                    color: _statusColors[student.status],
+              InkWell(
+                onTap: onTap,
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    student.status.name,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: _statusColors[student.status],
+                  decoration: BoxDecoration(
+                    color: _statusBg[student.status],
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: _statusColors[student.status]!.withValues(
+                        alpha: 0.3,
+                      ),
                     ),
                   ),
-                ],
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _statusIcons[student.status],
+                        size: 16,
+                        color: _statusColors[student.status],
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        student.status.name,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: _statusColors[student.status],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
+            ],
           ),
+          const SizedBox(height: 8),
+          _FeeBadge(student: student, onTap: onTapFeeBadge),
         ],
+      ),
+    );
+  }
+}
+
+class _FeeBadge extends StatelessWidget {
+  final AttendanceStudent student;
+  final VoidCallback onTap;
+  const _FeeBadge({required this.student, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color fg;
+    final String label;
+    if (!student.hasFeeRecords) {
+      bg = const Color(0xFFF3F4F6);
+      fg = const Color(0xFF6B7280);
+      label = 'No fee';
+    } else if (student.feeBalance <= 0) {
+      bg = const Color(0xFFDCFCE7);
+      fg = const Color(0xFF15803D);
+      label = 'Paid';
+    } else if (student.feeIsOverdue) {
+      bg = const Color(0xFFFEE2E2);
+      fg = const Color(0xFFB91C1C);
+      label = 'LKR ${formatAmount(student.feeBalance)} overdue';
+    } else {
+      bg = const Color(0xFFFEF9C3);
+      fg = const Color(0xFFA16207);
+      label = 'LKR ${formatAmount(student.feeBalance)} due';
+    }
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: fg,
+          ),
+        ),
       ),
     );
   }

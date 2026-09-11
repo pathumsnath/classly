@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../core/fees/is_overdue.dart';
 import '../../core/session/session_info.dart';
 import '../../core/supabase/client.dart';
 import '../../core/time/colombo_time.dart';
@@ -96,7 +97,7 @@ class FeesRepository {
       final student = studentById[p['student_id']];
       final cls = classById[p['class_id']];
       final status = p['status'] as String;
-      final isOverdue = _isOverdue(
+      final overdue = isOverdue(
         status: status,
         paymentMonth: p['month'] as String,
         paymentCycleStartedAt: p['cycle_started_at'] as String?,
@@ -120,7 +121,7 @@ class FeesRepository {
         balance: p['balance'] as num,
         status: status,
         paidDate: p['paid_date'] as String?,
-        isOverdue: isOverdue,
+        isOverdue: overdue,
       );
     }).toList();
 
@@ -133,25 +134,6 @@ class FeesRepository {
       return b.month.compareTo(a.month);
     });
     return rows;
-  }
-
-  /// Ported from src/lib/fees/status.ts's isOverdue.
-  bool _isOverdue({
-    required String status,
-    required String paymentMonth,
-    required String? paymentCycleStartedAt,
-    required int? billingCycleSessions,
-    required String? classCycleStartedAt,
-    required String currentMonth,
-  }) {
-    if (status != 'pending' && status != 'partial') return false;
-    if (billingCycleSessions != null && classCycleStartedAt != null) {
-      return (paymentCycleStartedAt ?? '').compareTo(classCycleStartedAt) < 0;
-    }
-    return paymentMonth
-            .substring(0, 7)
-            .compareTo(currentMonth.substring(0, 7)) <
-        0;
   }
 
   Future<num> fetchWalletBalance(SessionInfo session, String studentId) async {
