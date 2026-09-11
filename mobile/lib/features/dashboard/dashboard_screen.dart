@@ -22,7 +22,13 @@ class _NavTile {
 // destinations, same one-hue-per-tile convention, so a tile stays
 // recognizable to someone who already knows the web app.
 const _navItems = [
-  _NavTile('Tutors', Icons.school, Color(0xFFEEF2FF), Color(0xFF4F46E5)),
+  _NavTile(
+    'Tutors',
+    Icons.school,
+    Color(0xFFEEF2FF),
+    Color(0xFF4F46E5),
+    route: '/tutors',
+  ),
   _NavTile(
     'Students',
     Icons.people,

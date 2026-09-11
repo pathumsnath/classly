@@ -9,6 +9,9 @@ import '../../features/classes/classes_list_screen.dart';
 import '../../features/home/home_screen.dart';
 import '../../features/students/student_detail_screen.dart';
 import '../../features/students/students_list_screen.dart';
+import '../../features/tutors/tutor_detail_screen.dart';
+import '../../features/tutors/tutor_edit_screen.dart';
+import '../../features/tutors/tutors_list_screen.dart';
 
 /// Converts the Supabase auth-state Stream into a Listenable so go_router
 /// can re-evaluate `redirect` whenever sign-in/sign-out happens, without
@@ -70,6 +73,20 @@ final appRouter = GoRouter(
       path: '/students/:studentId',
       builder: (context, state) =>
           StudentDetailScreen(studentId: state.pathParameters['studentId']!),
+    ),
+    GoRoute(
+      path: '/tutors',
+      builder: (context, state) => const TutorsListScreen(),
+    ),
+    GoRoute(
+      path: '/tutors/:tutorId',
+      builder: (context, state) =>
+          TutorDetailScreen(tutorId: state.pathParameters['tutorId']!),
+    ),
+    GoRoute(
+      path: '/tutors/:tutorId/edit',
+      builder: (context, state) =>
+          TutorEditScreen(tutorId: state.pathParameters['tutorId']!),
     ),
   ],
 );
